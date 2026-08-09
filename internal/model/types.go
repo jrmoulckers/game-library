@@ -1,5 +1,7 @@
 package model
 
+import "encoding/json"
+
 const (
 	SchemaVersion = 1
 	ToolVersion   = "0.1.0"
@@ -218,4 +220,12 @@ type DeckyProfileV1 struct {
 type DeckyModV1 struct {
 	Game string `json:"game"`
 	Set  string `json:"set"`
+}
+
+func (profile DeckyProfileV1) MarshalJSON() ([]byte, error) {
+	type deckyProfileAlias DeckyProfileV1
+	if profile.Mods == nil {
+		profile.Mods = []DeckyModV1{}
+	}
+	return json.Marshal(deckyProfileAlias(profile))
 }

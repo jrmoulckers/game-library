@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jrmoulckers/game-library/internal/model"
@@ -56,5 +57,24 @@ func TestValidateCatalogEmptyMarker(t *testing.T) {
 	}
 	if err := ValidateCatalog(root); err == nil {
 		t.Fatal("expected mixed empty-marker payload rejection")
+	}
+}
+
+func TestMissingModsDefaultsEmptyAndMarshalsExplicitly(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mod-only.json")
+	data := []byte(`{"version":1,"id":"mod-only","name":"Mod only","artwork":null}`)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := LoadAndValidate(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"mods":[]`) {
+		t.Fatalf("generated profile must include explicit empty mods: %s", encoded)
 	}
 }

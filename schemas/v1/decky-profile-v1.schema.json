@@ -5,7 +5,7 @@
   "description": "Exact schema for the legacy Decky plugin profile ABI at the generated root profiles/<id>.json. This shape is frozen \u2014 it must never change without a new ABI version \u2014 because the existing Decky plugin reads it directly. It is always generated (via internal/profile.BuildExportPlan) from the canonical library/profiles/<id>/profile.json (see canonical-profile.schema.json / model.Profile), never authored by hand and never the source of truth.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "id", "name", "artwork", "mods"],
+  "required": ["version", "id", "name", "artwork"],
   "properties": {
     "version": {
       "type": "integer",
@@ -33,9 +33,9 @@
     },
     "mods": {
       "type": "array",
-      "description": "Per-game mod selections. At most one entry per distinct \"game\" value in this array (unique per game) \u2014 enforced by validation tooling in addition to this schema, since plain JSON Schema cannot express uniqueness keyed on a single object property. Each entry is a complete set: applying it fully replaces any prior mod selection for that game, there is no partial/merge semantics.",
+      "description": "Optional per-game mod selections; omission defaults to an empty list. At most one entry per distinct \"game\" value in this array (unique per game) \u2014 enforced by validation tooling in addition to this schema, since plain JSON Schema cannot express uniqueness keyed on a single object property. Each entry is a complete set: applying it fully replaces any prior mod selection for that game, with no partial/merge semantics.",
       "items": { "$ref": "common.defs.schema.json#/$defs/ModAssignment" }
     }
   },
-  "$comment": "Reserved ids: \"deck-default\" and \"steam-default\" are always retained and never pruned by garbage collection. The real steam-default fixture (testdata/decky/steam-default.json) has artwork == \"steam-default\" (its own id, a deliberate self-referential marker) and mods == [] \u2014 it is retained as an empty-overrides marker, not by having artwork == null. artwork == null is a separate, equally valid state meaning \"leave whatever art is currently applied unchanged\"; it is not what marks a profile as a reserved/synthetic default."
+  "$comment": "Reserved ids: \"deck-default\" and \"steam-default\" are always retained and never pruned by garbage collection. The real steam-default fixture (testdata/decky/steam-default.json) has artwork == \"steam-default\" and explicit mods == []; its grid contains only .deck-profile-empty. Although mods is optional on input and defaults empty, deterministic generated profiles emit mods: []. artwork == null is a separate valid state meaning leave current art unchanged."
 }

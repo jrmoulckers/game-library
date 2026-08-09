@@ -24,9 +24,11 @@ without breaking it.
   existing plugin exactly: `version` is `const 1`; `id` is the filename stem and
   must match `^[a-z0-9][a-z0-9._-]*$`; `id`/`name` required; `description` optional
   (omitted, never present-as-null); `artwork` is `string | null` and **required**
-  (`null` explicitly means "no art change", never "unset"); `mods` is a list of
-  `{game, set}` unique per `game`, where each entry is a **complete set** (applying
-  it fully replaces prior selections for that game — no merge/partial semantics).
+  (`null` explicitly means "no art change", never "unset"); `mods` is optional
+  on input and defaults to an empty list, with `{game, set}` entries unique per
+  `game`. Each entry is a **complete set** (applying it fully replaces prior
+  selections for that game — no merge/partial semantics). Deterministic generated
+  profiles emit explicit `mods: []` when empty.
   `deck-default` and `steam-default` are reserved ids that are always retained.
   The real `steam-default` profile has `mods: []` and
   `artwork: "steam-default"`; its generated grid contains only

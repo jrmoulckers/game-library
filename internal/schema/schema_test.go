@@ -74,6 +74,11 @@ func TestSchemasCompileAndValidateFixtures(t *testing.T) {
 			Artwork: &artwork, Mods: []model.DeckyModV1{},
 		})
 	validateValue(t, compiler,
+		"https://schemas.game-library.dev/v1/decky-profile-v1.schema.json",
+		map[string]any{
+			"version": 1, "id": "mod-only", "name": "Mod only", "artwork": nil,
+		})
+	validateValue(t, compiler,
 		"https://schemas.game-library.dev/v1/policy.schema.json",
 		model.PolicyFile{
 			Version: 1, Default: "tracked-external",

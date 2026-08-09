@@ -82,9 +82,6 @@ func Validate(profile model.DeckyProfileV1, filenameStem string) error {
 	if profile.Artwork != nil && !config.IsSafeID(*profile.Artwork) {
 		return fmt.Errorf("Decky artwork id %q is not path-safe", *profile.Artwork)
 	}
-	if profile.Mods == nil {
-		return fmt.Errorf("Decky profile mods must be an explicit array")
-	}
 	seen := make(map[string]struct{})
 	for _, mod := range profile.Mods {
 		if !config.IsSafeID(mod.Game) || !config.IsSafeID(mod.Set) {
