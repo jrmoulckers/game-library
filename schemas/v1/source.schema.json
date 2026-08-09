@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/source.schema.json",
+  "title": "Source (v1)",
+  "description": "Schema for library/sources/<source_id>.json, describing an external system this library reads from or reconciles against. Never contains secrets, API keys, session tokens, account IDs, or private endpoints \u2014 those live in device-local, untracked configuration, referenced only by source id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "id", "kind", "display_name", "contract", "auth_mode", "capabilities", "stability"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "steam",
+        "steamgriddb",
+        "playnite",
+        "romm",
+        "es-de",
+        "epic",
+        "ea",
+        "ubisoft",
+        "screenscraper",
+        "manual",
+        "other"
+      ]
+    },
+    "display_name": { "type": "string", "minLength": 1 },
+    "contract": {
+      "type": "string",
+      "description": "Shape of the integration contract. \"openapi\" is preferred where a stable spec exists (e.g. RomM); \"export-file\" covers Playnite-style file exports; \"scrape\" and \"manual\" are last resorts and always plan/staging-first.",
+      "enum": ["openapi", "rest", "export-file", "scrape", "manual"]
+    },
+    "endpoint_ref": {
+      "type": "string",
+      "description": "Sanitized, non-secret reference to where the contract is documented or configured (e.g. a doc anchor or environment variable name) \u2014 never a literal URL, IP, or hostname bound to a private deployment."
+    },
+    "auth_mode": {
+      "type": "string",
+      "enum": ["none", "api-key", "oauth", "session", "unsupported"]
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "What this source can be used for.",
+      "items": {
+        "type": "string",
+        "enum": ["inventory", "artwork", "metadata", "mapping"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "stability": {
+      "type": "string",
+      "description": "Confidence in the contract's durability. Sources without a stable contract (kind in epic/ea/ubisoft today) are \"inventory\"-only capability and stability \"best-effort\" or \"unsupported\" until a stable contract exists.",
+      "enum": ["stable", "best-effort", "planned", "unsupported"]
+    },
+    "notes": { "type": "string" }
+  }
+}

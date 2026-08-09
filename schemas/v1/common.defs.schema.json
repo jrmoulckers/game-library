@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/common.defs.schema.json",
+  "title": "Common Definitions (v1)",
+  "description": "Shared $defs reused across the v1 schema set. This file has no instance-level type and is only ever consumed via $ref.",
+  "$defs": {
+    "Sha256Hex": {
+      "type": "string",
+      "description": "Lowercase hex-encoded SHA-256 digest of the exact byte content it identifies (asset content or full raw release image).",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "SafeId": {
+      "type": "string",
+      "description": "Filesystem- and URL-safe identifier. Matches the Decky v1 safe-ID rule exactly so canonical and legacy identifiers stay interchangeable.",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Slug": {
+      "type": "string",
+      "description": "Lowercase slug used for stores, retro systems, and directory segments.",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 / ISO 8601 timestamp, UTC recommended."
+    },
+    "SymbolicPath": {
+      "type": "string",
+      "description": "A root-relative path using a symbolic root token (e.g. \"${INBOX}/...\", \"${LIBRARY}/...\"). Never an absolute device path, drive letter, home directory, or account-specific segment.",
+      "pattern": "^\\$\\{[A-Z][A-Z0-9_]*\\}(/[^\\s]+)*$",
+      "minLength": 1
+    },
+    "AssetRole": {
+      "type": "string",
+      "description": "Semantic role an asset plays in presentation. Distinct from media type/format.",
+      "enum": [
+        "grid",
+        "grid-portrait",
+        "hero",
+        "logo",
+        "icon",
+        "banner",
+        "boxart",
+        "screenshot",
+        "manual",
+        "video",
+        "other"
+      ]
+    },
+    "AssetRef": {
+      "type": "object",
+      "description": "Reference to canonical, content-addressed asset content by exact-byte SHA-256, plus the role it is being used in at the point of reference.",
+      "additionalProperties": false,
+      "required": ["sha256", "role"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/Sha256Hex" },
+        "role": { "$ref": "#/$defs/AssetRole" }
+      }
+    },
+    "GameRef": {
+      "$ref": "#/$defs/SafeId",
+      "description": "Canonical game identifier (directory slug under library/games/**)."
+    },
+    "PlatformClass": {
+      "type": "string",
+      "enum": ["pc", "retro"]
+    },
+    "StoreId": {
+      "$ref": "#/$defs/Slug",
+      "description": "PC storefront identifier, e.g. steam, gog, epic, ea, ubisoft, itch, humble, other."
+    },
+    "SystemId": {
+      "$ref": "#/$defs/Slug",
+      "description": "Retro logical system identifier, e.g. snes, genesis, ps1, gba."
+    },
+    "RetentionOutcome": {
+      "type": "string",
+      "description": "Result of applying retention policy precedence (asset > role > system > source > global) to a piece of data.",
+      "enum": ["managed", "tracked-external", "promote-on-approval", "quarantined"]
+    },
+    "ModAssignment": {
+      "type": "object",
+      "description": "A single game's selected mod set within a profile. At most one entry per game within an enclosing array (enforced by tooling, not representable in pure JSON Schema).",
+      "additionalProperties": false,
+      "required": ["game", "set"],
+      "properties": {
+        "game": {
+          "type": "string",
+          "description": "Legacy/Decky-ABI game identifier this mod selection applies to (safe ID, matches profile-visible game key, not necessarily the canonical library game id)."
+        },
+        "set": {
+          "type": "string",
+          "description": "Name of the mod set applied to the game. A complete set replaces prior selections for that game entirely (no partial/merge semantics)."
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "description": "Where a piece of data came from and how it entered the tree.",
+      "additionalProperties": false,
+      "required": ["origin", "imported_at"],
+      "properties": {
+        "origin": {
+          "type": "string",
+          "enum": ["scraped", "manual", "generated", "user-upload", "migrated"]
+        },
+        "imported_at": { "$ref": "#/$defs/Timestamp" },
+        "imported_by": {
+          "type": "string",
+          "description": "Sanitized actor label (adapter or tool name), never an account ID or personal identifier."
+        }
+      }
+    },
+    "License": {
+      "type": "object",
+      "description": "Explicit licensing statement. At least one of spdx_id or name must be present.",
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "spdx_id": { "type": "string" } }, "required": ["spdx_id"] },
+        { "properties": { "name": { "type": "string" } }, "required": ["name"] }
+      ],
+      "properties": {
+        "spdx_id": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

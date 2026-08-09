@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/playnite-mapping.schema.json",
+  "title": "Playnite Mapping (v1, adapter-only)",
+  "description": "Schema for library/mappings/playnite/<uuid>.json. Playnite UUIDs are never treated as canonical identity and never embedded in game.json; they exist only as adapter-only mapping records that translate Playnite's local database identifiers to the canonical game id. The Playnite database itself is never written by this system.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "playnite_uuid", "game_ref", "adapter_only", "confidence", "mapped_at"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "playnite_uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Playnite's local GUID for the game. Must equal the <uuid> filename stem."
+    },
+    "game_ref": {
+      "$ref": "common.defs.schema.json#/$defs/GameRef",
+      "description": "Canonical game id this UUID currently resolves to."
+    },
+    "adapter_only": {
+      "type": "boolean",
+      "const": true,
+      "description": "Always true. Documents that this record is a translation aid, not an identity source; canonical identity is Steam AppID, storefront ID, or retro system+slug+release."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["exact", "fuzzy", "manual"],
+      "description": "How the mapping was established."
+    },
+    "mapped_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "notes": { "type": "string" }
+  }
+}

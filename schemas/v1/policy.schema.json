@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/policy.schema.json",
+  "title": "Retention/Promotion Policy (v1)",
+  "description": "Schema for library/policies/<policy_id>.json. Each policy applies at exactly one scope level. When multiple policies could apply to the same data, precedence is fixed and total: asset > role > system > source > global (most specific wins; ties are not possible because scope+selector is unique per level). Presentation/profile selection never silently promotes bytes \u2014 promotion always requires the promote-on-approval outcome plus an explicit approval step.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "id", "scope", "retention"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "scope": {
+      "type": "object",
+      "description": "Precedence order (highest to lowest): asset > role > system > source > global. \"global\" has no selector; every other level requires one.",
+      "additionalProperties": false,
+      "required": ["level"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["global", "source", "system", "role", "asset"]
+        },
+        "selector": {
+          "type": "string",
+          "description": "Value the level applies to: source id, system id, asset role, or asset sha256. Omitted only when level == \"global\"."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "level": { "const": "global" } } },
+          "then": { "properties": { "selector": false } },
+          "else": { "properties": { "selector": true }, "required": ["selector"] }
+        }
+      ]
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "outcome": { "$ref": "common.defs.schema.json#/$defs/RetentionOutcome" },
+        "max_age_days": { "type": "integer", "minimum": 0 },
+        "keep_versions": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "description": "Only meaningful when retention.outcome == \"promote-on-approval\". Promotion is always an explicit, auditable step \u2014 never implied by selecting an asset for presentation.",
+      "additionalProperties": false,
+      "properties": {
+        "requires_approval": { "type": "boolean", "const": true },
+        "approver_role": { "type": "string" }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

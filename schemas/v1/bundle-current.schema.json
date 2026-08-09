@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/bundle-current.schema.json",
+  "title": "Bundle Current Pointer (v1)",
+  "description": "Schema for bundles/<bundle_id>/current.json. A small, atomically-rewritten pointer file naming which immutable revision is presently live, plus the previous revision for rollback. Publishing a new revision is staged then atomically swapped; rollback is just re-pointing current to previous_revision \u2014 it never deletes or edits revision directories.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "bundle_id", "current_revision", "updated_at"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "bundle_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "current_revision": { "type": "integer", "minimum": 1 },
+    "previous_revision": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "The immediately prior current_revision, retained for rollback. Null only for a bundle's first-ever publish."
+    },
+    "updated_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "reason": {
+      "type": "string",
+      "enum": ["publish", "rollback", "recovery"]
+    }
+  }
+}

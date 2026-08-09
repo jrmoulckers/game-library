@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/catalog.schema.json",
+  "title": "Catalog Root Manifest (v1)",
+  "description": "Schema for catalog.json, the single synced-tree root manifest. It is a lightweight, generated index over the canonical directory tree (library/**) — it never embeds full game, asset, or profile bodies, only counts and pointers, so it stays cheap to sync and diff.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "generated_at", "generator", "roots", "counts"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "roots": {
+      "type": "object",
+      "description": "Symbolic-root-relative paths to top-level tree sections, for adapter discovery without hardcoding layout.",
+      "additionalProperties": false,
+      "required": ["games", "releases", "mappings", "assets", "sources", "policies", "canonical", "bundles", "state"],
+      "properties": {
+        "games": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "releases": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "mappings": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "assets": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "sources": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "policies": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "canonical": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "bundles": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" },
+        "state": { "$ref": "common.defs.schema.json#/$defs/SymbolicPath" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "description": "Aggregate counts for quick sanity checks and drift detection; authoritative counts are always the directory contents.",
+      "additionalProperties": false,
+      "required": ["games", "releases", "assets", "sources", "policies", "canonical_profiles"],
+      "properties": {
+        "games": { "type": "integer", "minimum": 0 },
+        "releases": { "type": "integer", "minimum": 0 },
+        "assets": { "type": "integer", "minimum": 0 },
+        "sources": { "type": "integer", "minimum": 0 },
+        "policies": { "type": "integer", "minimum": 0 },
+        "canonical_profiles": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "description": "Optional aggregate integrity marker for the whole tree at generation time, used for cheap drift detection between sync peers.",
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": { "type": "string", "const": "sha256-tree-digest-v1" },
+        "digest": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" }
+      },
+      "required": ["algorithm", "digest"]
+    }
+  }
+}
