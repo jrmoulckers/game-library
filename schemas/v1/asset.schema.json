@@ -2,29 +2,31 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.game-library.dev/v1/asset.schema.json",
   "title": "Asset Metadata (v1)",
-  "description": "Schema for asset.json, stored alongside content.<ext> at library/assets/sha256/<aa>/<hash>/asset.json. Assets are content-addressed by the exact-byte SHA-256 of content.<ext>; the directory hash and this file's sha256 field must match.",
+  "description": "Schema for asset.json, stored alongside content.<ext> at library/assets/sha256/<aa>/<hash>/asset.json (the content-addressed layout internal/profile.canonicalAssetPath and internal/manifest.assetPath both resolve against). No Go struct defines this file's contents yet \u2014 the Go tooling only reads/writes the sibling content.<ext> file by path and verifies its SHA-256 against a profile's AssetSelection (see canonical-profile.schema.json) \u2014 so this schema is forward-looking and documents the intended asset-metadata shape. retentionState reuses the same RetentionOutcome vocabulary as policy.schema.json's PolicyRule.mode; a tracked-external, promote-on-approval, or quarantined asset record may describe content that is not (yet, or ever) materialized locally, so contentFile/byteSize/dimensions are only required once retentionState is \"managed\".",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "sha256", "content_file", "media_type", "kind", "byte_size", "provenance", "license"],
+  "required": ["sha256", "mediaType", "kind", "retentionState", "provenance", "license"],
   "properties": {
-    "$schema": { "type": "string" },
-    "schema_version": { "type": "integer", "const": 1 },
     "sha256": {
       "$ref": "common.defs.schema.json#/$defs/Sha256Hex",
-      "description": "Exact-byte SHA-256 of content.<ext>. Must equal the <hash> directory segment."
+      "description": "Exact-byte SHA-256 of the asset's content. When retentionState is \"managed\" this must equal the <hash> directory segment and the hash of the sibling content.<ext> file."
     },
-    "content_file": {
+    "contentFile": {
       "type": "string",
-      "description": "Filename of the sibling content file, e.g. \"content.png\". Never a device-specific or personal filename.",
-      "pattern": "^content\\.[a-z0-9]{1,8}$"
+      "description": "Filename of the sibling content file, e.g. \"content.png\". Only meaningful (and required) when retentionState is \"managed\", since that is the only state guaranteeing local exact-byte content exists.",
+      "pattern": "^content\\.[A-Za-z0-9]{1,8}$"
     },
-    "media_type": {
+    "mediaType": {
       "type": "string",
-      "description": "IANA media type of content.<ext>, e.g. image/png, image/jpeg, video/webm.",
+      "description": "IANA media type of the content, e.g. image/png, image/jpeg, video/webm.",
       "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
     },
     "kind": { "$ref": "common.defs.schema.json#/$defs/AssetRole" },
-    "byte_size": { "type": "integer", "minimum": 0 },
+    "retentionState": {
+      "$ref": "common.defs.schema.json#/$defs/RetentionOutcome",
+      "description": "Outcome of retention policy evaluation for this asset (see policy.schema.json). \"managed\" assets have local exact-byte content under this directory; \"tracked-external\", \"promote-on-approval\", and \"quarantined\" assets may be metadata-only records describing content that lives elsewhere, awaits approval, or has been set aside, respectively. Presentation/profile selection alone never silently changes this state to \"managed\"."
+    },
+    "byteSize": { "type": "integer", "minimum": 0 },
     "dimensions": {
       "type": "object",
       "description": "Optional pixel dimensions for image/video assets.",
@@ -35,9 +37,9 @@
         "height": { "type": "integer", "minimum": 1 }
       }
     },
-    "source_ref": {
+    "sourceRef": {
       "type": "string",
-      "description": "Optional id of the library/sources/<source_id>.json this asset was retrieved from."
+      "description": "Optional id of the source (see source.schema.json) this asset was retrieved from."
     },
     "provenance": { "$ref": "common.defs.schema.json#/$defs/Provenance" },
     "license": { "$ref": "common.defs.schema.json#/$defs/License" },
@@ -51,5 +53,16 @@
       "description": "Related asset content addresses derived from this asset (e.g. a downscaled thumbnail), each a full AssetRef so role is explicit.",
       "items": { "$ref": "common.defs.schema.json#/$defs/AssetRef" }
     }
+  },
+  "if": {
+    "properties": { "retentionState": { "const": "managed" } },
+    "required": ["retentionState"]
+  },
+  "then": {
+    "properties": {
+      "contentFile": true,
+      "byteSize": true
+    },
+    "required": ["contentFile", "byteSize"]
   }
 }

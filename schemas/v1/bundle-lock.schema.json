@@ -2,20 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.game-library.dev/v1/bundle-lock.schema.json",
   "title": "Bundle Lock Manifest (v1)",
-  "description": "Schema for bundles/<bundle_id>/<revision>/manifest.lock.json. Bundle revisions are generated, immutable, hash-locked directory materializations (e.g. a frontend-ready artwork/profile bundle) \u2014 never a source of truth. Every file materialized into the revision is listed with its exact-byte SHA-256 so drift from this lock is detectable and treated as failure.",
+  "description": "Schema for bundles/<profile-id>/<revision-sha256>/bundle.lock.json, the deterministic lock file internal/profile.BuildBundlePlan plans to render (as a \"render\" Action, see migration-manifest.schema.json) after all of a bundle revision's assets have been copied and verified. Bundle revisions are generated, immutable, hash-locked directory materializations of a canonical profile \u2014 never a source of truth. No Go type defines this file's contents yet (BuildBundlePlan only plans the write); this schema is forward-looking and documents the intended, currently-planned shape so tooling and docs agree on file naming and the revision identifier's type ahead of implementation.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "bundle_id", "revision", "generated_at", "generator", "immutable", "files"],
+  "required": ["profileId", "revision", "generatedAt", "generator", "immutable", "files"],
   "properties": {
-    "$schema": { "type": "string" },
-    "schema_version": { "type": "integer", "const": 1 },
-    "bundle_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
-    "revision": {
-      "type": "integer",
-      "minimum": 1,
-      "description": "Monotonically increasing revision number for this bundle_id. Must equal the enclosing directory segment."
+    "profileId": {
+      "$ref": "common.defs.schema.json#/$defs/SafeId",
+      "description": "Must equal the profile-id path segment in bundles/<profileId>/<revision>/bundle.lock.json."
     },
-    "generated_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "revision": {
+      "$ref": "common.defs.schema.json#/$defs/Sha256Hex",
+      "description": "SHA-256 of the canonical profile's exact JSON encoding at generation time (internal/profile's unexported revision() function: sha256(json.Marshal(profile))). Must equal the enclosing directory segment. This is a content digest, not a monotonically increasing counter \u2014 any change to the profile document produces a new, unrelated-looking revision hash."
+    },
+    "generatedAt": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
     "generator": {
       "type": "object",
       "additionalProperties": false,
@@ -23,16 +23,6 @@
       "properties": {
         "name": { "type": "string" },
         "version": { "type": "string" }
-      }
-    },
-    "source_profile_ref": {
-      "type": "object",
-      "description": "The canonical profile (and its content digest at generation time) this revision was materialized from, so it is always traceable back to source.",
-      "additionalProperties": false,
-      "required": ["profile_id", "profile_content_sha256"],
-      "properties": {
-        "profile_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
-        "profile_content_sha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" }
       }
     },
     "inputs": {
@@ -44,19 +34,19 @@
     "immutable": {
       "type": "boolean",
       "const": true,
-      "description": "Always true. Once written, a revision's files are never edited in place; changes always produce a new revision."
+      "description": "Always true. Once written, a revision's files are never edited in place; changes always produce a new revision directory (a new profile content hash)."
     },
     "files": {
       "type": "array",
-      "description": "Every materialized file in this revision, path-relative to the revision root, with its exact-byte hash for lock verification.",
+      "description": "Every materialized file in this revision, path-relative to the revision root (bundles/<profileId>/<revision>/), with its exact-byte hash for lock verification. Matches the destination paths internal/profile.BuildBundlePlan computes: assets/<safe-game-key>/<role>.<extension> plus this lock file itself.",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "sha256", "size_bytes"],
+        "required": ["path", "sha256", "sizeBytes"],
         "properties": {
           "path": { "type": "string", "minLength": 1 },
           "sha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
-          "size_bytes": { "type": "integer", "minimum": 0 }
+          "sizeBytes": { "type": "integer", "minimum": 0 }
         }
       },
       "minItems": 1

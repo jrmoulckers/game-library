@@ -1,57 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.game-library.dev/v1/policy.schema.json",
-  "title": "Retention/Promotion Policy (v1)",
-  "description": "Schema for library/policies/<policy_id>.json. Each policy applies at exactly one scope level. When multiple policies could apply to the same data, precedence is fixed and total: asset > role > system > source > global (most specific wins; ties are not possible because scope+selector is unique per level). Presentation/profile selection never silently promotes bytes \u2014 promotion always requires the promote-on-approval outcome plus an explicit approval step.",
+  "title": "Policy File (v1)",
+  "description": "Validates internal/model.PolicyFile / model.PolicyRule exactly as read/checked by internal/policy.Validate and evaluated by internal/policy.Resolve, and exercised by configs/examples/policy.json and the policy embedded in configs/examples/config.json. This is a single document containing a global default plus an optional list of scoped rules \u2014 not one file per scope level.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "id", "scope", "retention"],
+  "required": ["version", "default"],
   "properties": {
-    "$schema": { "type": "string" },
-    "schema_version": { "type": "integer", "const": 1 },
-    "id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
-    "scope": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Must equal internal/model.SchemaVersion; internal/policy.Validate rejects any other value."
+    },
+    "default": {
+      "$ref": "common.defs.schema.json#/$defs/RetentionOutcome",
+      "description": "Global fallback outcome, used when no rule matches (or when \"rules\" is absent)."
+    },
+    "rules": {
+      "type": "array",
+      "description": "Optional scoped overrides (model.PolicyFile.Rules, json:\"rules,omitempty\"), evaluated by internal/policy.Resolve/specificity.",
+      "items": { "$ref": "#/$defs/PolicyRule" }
+    }
+  },
+  "$defs": {
+    "PolicyRule": {
       "type": "object",
-      "description": "Precedence order (highest to lowest): asset > role > system > source > global. \"global\" has no selector; every other level requires one.",
+      "description": "model.PolicyRule. \"mode\" is required; source/system/role/assetSha256 are independently optional selectors \u2014 any combination (including none) is structurally valid.",
       "additionalProperties": false,
-      "required": ["level"],
+      "required": ["mode"],
       "properties": {
-        "level": {
+        "source": {
           "type": "string",
-          "enum": ["global", "source", "system", "role", "asset"]
+          "description": "Matches Observation.RootID exactly when present (internal/policy.specificity, weight 1 \u2014 lowest of the four selectors)."
         },
-        "selector": {
+        "system": {
           "type": "string",
-          "description": "Value the level applies to: source id, system id, asset role, or asset sha256. Omitted only when level == \"global\"."
-        }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "level": { "const": "global" } } },
-          "then": { "properties": { "selector": false } },
-          "else": { "properties": { "selector": true }, "required": ["selector"] }
-        }
-      ]
-    },
-    "retention": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["outcome"],
-      "properties": {
-        "outcome": { "$ref": "common.defs.schema.json#/$defs/RetentionOutcome" },
-        "max_age_days": { "type": "integer", "minimum": 0 },
-        "keep_versions": { "type": "integer", "minimum": 1 }
+          "description": "Matches Observation.System exactly when present (weight 2)."
+        },
+        "role": {
+          "type": "string",
+          "description": "Matches Observation.Media.Role exactly when present (weight 4)."
+        },
+        "assetSha256": {
+          "type": "string",
+          "description": "Matches Observation.SHA256 exactly when present (weight 8 \u2014 highest of the four selectors). internal/policy does not itself enforce a SHA-256 shape on this field, though by convention it is a full lowercase hex digest (see common.defs.schema.json#/$defs/Sha256Hex)."
+        },
+        "mode": { "$ref": "common.defs.schema.json#/$defs/RetentionOutcome" }
       }
-    },
-    "promotion": {
-      "type": "object",
-      "description": "Only meaningful when retention.outcome == \"promote-on-approval\". Promotion is always an explicit, auditable step \u2014 never implied by selecting an asset for presentation.",
-      "additionalProperties": false,
-      "properties": {
-        "requires_approval": { "type": "boolean", "const": true },
-        "approver_role": { "type": "string" }
-      }
-    },
-    "notes": { "type": "string" }
-  }
+    }
+  },
+  "$comment": "Precedence is a strict, additive specificity score, most specific wins: asset (assetSha256, +8) > role (+4) > system (+2) > source (+1); \"default\" is the global fallback used when zero rules match. A rule may combine multiple selectors (e.g. system+role together), in which case its score is the sum \u2014 internal/policy.Resolve always picks the single highest-scoring matching rule, so ties are only possible between rules with an identical selector combination, which internal/policy.Validate rejects: two rules with the exact same (source, system, role, assetSha256) tuple \u2014 including all-empty, i.e. more than one selector-less rule \u2014 fail validation as a \"duplicate policy selector\". Plain JSON Schema cannot express this whole-tuple uniqueness constraint (uniqueItems would also require \"mode\" to differ, which is not the rule Go enforces), so it is documented here rather than schema-enforced."
 }

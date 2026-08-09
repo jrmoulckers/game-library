@@ -8,7 +8,12 @@ reference for what each integration is allowed to do and where its boundary sits
 1. **Plan/staging first.** Every adapter's output starts life under `state/`
    (`inventory-observation.schema.json`, `inventory-report.schema.json`,
    `migration-manifest.schema.json`). No adapter writes directly into
-   `library/**`, `bundles/**`, or a live frontend root.
+   `library/**`, `bundles/**`, or a live frontend root. In the current
+   implementation this is enforced structurally: `gamelib`'s `import plan`,
+   `bundle plan`, and `export plan` subcommands only ever emit a
+   `migration-manifest.schema.json`-shaped plan (`model.Manifest`); there is no
+   `apply` subcommand yet, so nothing in this repo's tooling can write to
+   `library/**`/`bundles/**` on its own today.
 2. **Promotion follows policy.** Moving staged/observed data into `library/**` is
    subject to the same retention/approval rules as any other data (see
    [`identity-and-policy.md`](identity-and-policy.md)).
@@ -33,7 +38,10 @@ reference for what each integration is allowed to do and where its boundary sits
   integration path.
 - **Playnite's own database is never written by this system, in either direction.**
   Only its export is read; the only artifact produced is an adapter-only mapping
-  file (`library/mappings/playnite/<uuid>.json`), never a write-back into Playnite.
+  file (`library/mappings/playnite/<uuid>.json`, **forward-looking** — today
+  expressed inline as the `"playnite"` key of a profile's `games[].identities`
+  map, see [`identity-and-policy.md`](identity-and-policy.md)), never a write-back
+  into Playnite.
 - Mapping `confidence` (`exact` | `fuzzy` | `manual`) must be recorded on every
   mapping so low-confidence auto-matches are distinguishable and reviewable.
 
@@ -78,4 +86,4 @@ bundle revision and a correct `current.json` pointer. Whether/when a given devic
 adopts that pointer, and how it's actually copied into that device's live paths,
 is homelab-side automation's decision, using the safety rules in
 [`migration-and-recovery.md`](migration-and-recovery.md) (copy-first, no
-hardlinks/symlinks, atomic publish, rollback via `previous_revision`).
+hardlinks/symlinks, atomic publish, rollback via `previousRevision`).

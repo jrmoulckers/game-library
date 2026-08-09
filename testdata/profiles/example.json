@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "example",
+  "name": "Example profile",
+  "games": [
+    {
+      "id": "steam:123",
+      "identities": {
+        "steam": "123",
+        "playnite": "12345678-1234-1234-1234-1234567890ab",
+        "romm": "42"
+      },
+      "assets": {
+        "grid": {
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "extension": "png"
+        },
+        "logo": {
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "extension": "png"
+        }
+      }
+    },
+    {
+      "id": "retro:n64:example-game",
+      "retro": {
+        "system": "n64",
+        "stem": "Example Game"
+      },
+      "identities": {
+        "romm": "84"
+      },
+      "assets": {
+        "cover": {
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "extension": "jpg"
+        },
+        "manual": {
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "extension": "pdf"
+        }
+      }
+    }
+  ]
+}
+

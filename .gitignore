@@ -1,0 +1,14 @@
+# Host-local configuration and exact path-level reports
+configs/local/
+reports/private/
+
+# Build output
+bin/
+*.exe
+*.test
+coverage.out
+
+# Temporary files
+.gamelib/
+*.tmp
+

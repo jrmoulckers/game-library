@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "deck-default",
+  "name": "Deck default",
+  "description": "Synthetic compatibility fixture",
+  "artwork": "deck-default",
+  "mods": []
+}
+

@@ -5,6 +5,13 @@ the catalog reads from or reconciles against, its contract shape, and its curren
 stability. See [`adapters.md`](adapters.md) for behavioral rules and
 [ADR-0006](decisions/0006-adapter-boundaries-and-ownership.md) for the reasoning.
 
+**Status:** `source.schema.json` (and this reference table) is **forward-looking**
+— no Go type in the current `gamelib` implementation reads or writes a
+`library/sources/<source_id>.json` file yet. Today, adapter behavior is
+implemented directly per-adapter (see `internal/identity`, `internal/profile`'s
+`adapterDestination`) rather than declared in a per-source record. This document
+still reflects the agreed target contract for each integration.
+
 | `kind` | `contract` | `auth_mode` | `capabilities` | `stability` | Notes |
 |---|---|---|---|---|---|
 | `steam` | `rest` | `api-key` | `inventory`, `metadata` | `stable` | Drives `pc.appid` identity directly. |

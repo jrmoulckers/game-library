@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "steam-default",
+  "name": "Steam default",
+  "description": "Synthetic empty compatibility fixture",
+  "artwork": "steam-default",
+  "mods": []
+}
+
