@@ -11,3 +11,8 @@ coverage.out
 # Temporary files
 .gamelib/
 *.tmp
+
+# Engineering-owned lint configuration, fetched at a pinned tag by
+# scripts/fetch-engineering-config.sh. Never committed: jrmoulckers/engineering
+# owns this file, and copying it here would fork it (.github ADR-0003).
+/.golangci.yml

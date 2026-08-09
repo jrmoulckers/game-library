@@ -1,3 +1,5 @@
+// Package decky reads and validates the frozen Decky v1 profile ABI, the
+// generated legacy surface described by schemas/v1/decky-profile-v1.schema.json.
 package decky
 
 import (
@@ -43,7 +45,7 @@ func ValidateCatalog(root string) error {
 	}
 	sort.Strings(profilePaths)
 	if len(profilePaths) == 0 {
-		return fmt.Errorf("Decky catalog has no profile JSON files")
+		return fmt.Errorf("catalog has no Decky profile JSON files")
 	}
 	for _, profilePath := range profilePaths {
 		profile, err := LoadAndValidate(profilePath)
@@ -68,27 +70,27 @@ func ValidateCatalog(root string) error {
 
 func Validate(profile model.DeckyProfileV1, filenameStem string) error {
 	if profile.Version != 1 {
-		return fmt.Errorf("Decky profile version must be 1")
+		return fmt.Errorf("decky profile version must be 1")
 	}
 	if !config.IsSafeID(profile.ID) {
-		return fmt.Errorf("Decky profile id %q is not path-safe", profile.ID)
+		return fmt.Errorf("decky profile id %q is not path-safe", profile.ID)
 	}
 	if profile.ID != filenameStem {
-		return fmt.Errorf("Decky profile filename stem %q does not match id %q", filenameStem, profile.ID)
+		return fmt.Errorf("decky profile filename stem %q does not match id %q", filenameStem, profile.ID)
 	}
 	if strings.TrimSpace(profile.Name) == "" {
-		return fmt.Errorf("Decky profile name is required")
+		return fmt.Errorf("decky profile name is required")
 	}
 	if profile.Artwork != nil && !config.IsSafeID(*profile.Artwork) {
-		return fmt.Errorf("Decky artwork id %q is not path-safe", *profile.Artwork)
+		return fmt.Errorf("decky artwork id %q is not path-safe", *profile.Artwork)
 	}
 	seen := make(map[string]struct{})
 	for _, mod := range profile.Mods {
 		if !config.IsSafeID(mod.Game) || !config.IsSafeID(mod.Set) {
-			return fmt.Errorf("Decky mod game/set ids must be path-safe")
+			return fmt.Errorf("decky mod game/set ids must be path-safe")
 		}
 		if _, ok := seen[mod.Game]; ok {
-			return fmt.Errorf("Decky profile contains more than one mod set for game %q", mod.Game)
+			return fmt.Errorf("decky profile contains more than one mod set for game %q", mod.Game)
 		}
 		seen[mod.Game] = struct{}{}
 	}

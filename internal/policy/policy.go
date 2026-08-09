@@ -1,3 +1,5 @@
+// Package policy validates retention policy files and resolves an observation to
+// an outcome using asset > role > system > source > global precedence.
 package policy
 
 import (

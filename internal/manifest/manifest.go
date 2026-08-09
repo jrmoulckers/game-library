@@ -1,3 +1,5 @@
+// Package manifest builds and verifies the plan-only migration manifests that
+// gamelib emits; it never applies the actions it describes.
 package manifest
 
 import (

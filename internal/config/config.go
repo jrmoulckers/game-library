@@ -1,3 +1,5 @@
+// Package config loads and validates the local, untracked gamelib configuration
+// that maps symbolic root tokens onto device paths.
 package config
 
 import (

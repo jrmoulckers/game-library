@@ -1,9 +1,15 @@
 # Architecture Decision Records
 
-This directory holds ADRs for the canonical game-artwork/catalog plan. Each ADR
-follows the standard template (Status / Context / Decision / Consequences) and is
-numbered sequentially. ADRs are immutable once **Accepted**; changes go through a
-new ADR that supersedes the old one.
+This directory holds ADRs for the canonical game-artwork/catalog plan. Recording
+consequential tradeoffs this way, and superseding rather than editing an accepted
+record, follows
+[`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/architecture/boundaries-and-contracts.md#durable-decisions).
+
+Repository-specific: each ADR uses the standard template (Status / Context /
+Decision / Consequences) and a sequential `NNNN-slug.md` name under
+`docs/architecture/decisions/`. Note that sibling repositories currently use a
+different location and numbering scheme; a unified convention is being decided
+centrally, so nothing here is renumbered yet.
 
 | # | Title | Status |
 |---|-------|--------|

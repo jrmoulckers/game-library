@@ -9,17 +9,19 @@ of these by default.
 
 - **Read-only by default.** Any tool that can write to the tree must be run in an
   explicit write mode; the default invocation only reads and reports.
-- **Symbolic roots, relative paths.** Every path recorded in any state/migration
-  document uses a symbolic root token (`${LIBRARY}`, `${INBOX}`, `${STAGING}`, ...)
-  resolved by local, untracked configuration — never an absolute device path, drive
-  letter, home directory, or account-specific segment. See
-  `common.defs.schema.json`'s `SymbolicPath`.
-- **Sanitized reports.** Anything written under `state/inventory/**` or
-  `state/migration/**` is sanitized before being written: no personal paths, no
-  account IDs, no IPs, no secrets. `inventory-report.schema.json`'s `privacy`
-  field records whether a given inventory document is `private` (root-relative
-  paths, safe for local-only use) or `sanitized` (no observations, no relative
-  paths at all — safe to attach to a bug report); see
+- **Symbolic roots, relative paths.** Keeping device paths, drive letters, home
+  directories, and account identifiers out of committed and shared artifacts is
+  [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/assurance/security-and-privacy.md#secret-lifecycle).
+  Repo-specific: every path recorded in any state/migration document uses a
+  symbolic root token (`${LIBRARY}`, `${INBOX}`, `${STAGING}`, ...) resolved by
+  local, untracked configuration. See `common.defs.schema.json`'s `SymbolicPath`.
+- **Sanitized reports.** Redacting sensitive payloads before evidence leaves the
+  producing boundary is
+  [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/operations/observability.md#redacted-observable-evidence).
+  Repo-specific: `inventory-report.schema.json`'s `privacy` field records whether
+  a given inventory document is `private` (root-relative paths, safe for
+  local-only use) or `sanitized` (no observations, no relative paths at all —
+  safe to attach to a bug report); see
   [`identity-and-policy.md`](identity-and-policy.md) and
   `internal/inventory.Sanitize`.
 - **Hash-locked manifests.** Any generated/staged set of files is described by an

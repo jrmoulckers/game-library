@@ -1,7 +1,10 @@
+// Package media inspects artwork files to derive media facts, roles, systems,
+// and identity hints from content rather than filename alone.
 package media
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -32,7 +35,7 @@ func Inspect(path, rootKind, relativePath string) (model.MediaFacts, error) {
 
 	head := make([]byte, 512)
 	n, err := io.ReadFull(file, head)
-	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
 		return model.MediaFacts{}, err
 	}
 	head = head[:n]

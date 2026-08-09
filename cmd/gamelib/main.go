@@ -316,7 +316,7 @@ func twoFileFlags(name string, args []string, inputName string) (string, string,
 }
 
 func usageError() error {
-	return fmt.Errorf("usage: gamelib <inventory|report|duplicates|identity|import|profile|bundle|export|validate|manifest|serve|version> ...")
+	return fmt.Errorf("usage: gamelib <inventory|report|duplicates|identity|import|profile|bundle|export|validate|manifest|serve|version> [args]")
 }
 
 // newServeServer parses `gamelib serve` flags and constructs a bound

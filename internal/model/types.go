@@ -1,3 +1,5 @@
+// Package model holds the Go types that mirror the JSON Schema contracts in
+// schemas/v1. It is the single shared vocabulary for every other package.
 package model
 
 import "encoding/json"

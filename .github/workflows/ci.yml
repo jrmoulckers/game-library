@@ -40,3 +40,23 @@ jobs:
             $matches | ForEach-Object { Write-Error $_ }
             exit 1
           }
+
+  # ENG-TEST-004 requires each static signal to report independently, so lint is
+  # its own job rather than another step in `test`.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Fetch Engineering golangci-lint configuration
+        env:
+          # jrmoulckers/engineering is private, so the default GITHUB_TOKEN cannot
+          # read it. Store a token with read access as ENGINEERING_READ_TOKEN.
+          GH_TOKEN: ${{ secrets.ENGINEERING_READ_TOKEN }}
+        run: scripts/fetch-engineering-config.sh
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
