@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/game.schema.json",
+  "title": "Canonical Game (v1)",
+  "description": "Unified schema for game.json, used at both library/games/pc/{steam,<store>}/<id>/game.json and library/games/retro/<system>/<slug>/game.json. Shared fields live at the top level; platform-specific identity lives under \"pc\" or \"retro\" per platform_class. Playnite UUIDs are never embedded here — they live only in adapter-only mapping files (see playnite-mapping.schema.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "id", "platform_class", "name"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": {
+      "$ref": "common.defs.schema.json#/$defs/GameRef",
+      "description": "Canonical id. Must equal the enclosing directory slug (steam appid, storefront id, or retro slug)."
+    },
+    "platform_class": { "$ref": "common.defs.schema.json#/$defs/PlatformClass" },
+    "name": { "type": "string", "minLength": 1 },
+    "sort_name": { "type": "string" },
+    "description": { "type": "string" },
+    "release_date": { "type": "string", "format": "date" },
+    "genres": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "assets": {
+      "type": "array",
+      "description": "Canonical asset references for this game, by role. Presentation adapters select from these; selection never mutates or promotes asset bytes.",
+      "items": { "$ref": "common.defs.schema.json#/$defs/AssetRef" }
+    },
+    "pc": { "$ref": "#/$defs/PcIdentity" },
+    "retro": { "$ref": "#/$defs/RetroIdentity" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "platform_class": { "const": "pc" } } },
+      "then": { "properties": { "pc": true }, "required": ["pc"] },
+      "else": {
+        "if": { "properties": { "platform_class": { "const": "retro" } } },
+        "then": { "properties": { "retro": true }, "required": ["retro"] }
+      }
+    }
+  ],
+  "$defs": {
+    "PcIdentity": {
+      "type": "object",
+      "description": "PC identity. Steam is identified by numeric AppID; every other storefront is identified by an opaque storefront_id (its own stable id format).",
+      "additionalProperties": false,
+      "required": ["store"],
+      "properties": {
+        "store": { "$ref": "common.defs.schema.json#/$defs/StoreId" },
+        "appid": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Steam AppID. Required when store == \"steam\"."
+        },
+        "storefront_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque storefront-native identifier. Required when store != \"steam\"."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "store": { "const": "steam" } } },
+          "then": { "properties": { "appid": true }, "required": ["appid"] },
+          "else": { "properties": { "storefront_id": true }, "required": ["storefront_id"] }
+        }
+      ]
+    },
+    "RetroIdentity": {
+      "type": "object",
+      "description": "Retro identity is logical (system + slug), decoupled from any single file. Exact-byte releases are tracked separately in library/releases/retro/<system>/<sha256>/ and referenced here by digest and/or filename alias.",
+      "additionalProperties": false,
+      "required": ["system", "slug"],
+      "properties": {
+        "system": { "$ref": "common.defs.schema.json#/$defs/SystemId" },
+        "slug": { "$ref": "common.defs.schema.json#/$defs/Slug" },
+        "releases": {
+          "type": "array",
+          "description": "Known release digests for this logical game (e.g. region/revision variants). Full raw SHA-256, not a truncated or per-block hash.",
+          "items": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
+          "uniqueItems": true
+        },
+        "filename_aliases": {
+          "type": "array",
+          "description": "Historically observed filenames for releases of this game, kept for operator recognition only \u2014 never used as identity.",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/bundle-lock.schema.json",
+  "title": "Bundle Lock Manifest (v1)",
+  "description": "Schema for bundles/<bundle_id>/<revision>/manifest.lock.json. Bundle revisions are generated, immutable, hash-locked directory materializations (e.g. a frontend-ready artwork/profile bundle) \u2014 never a source of truth. Every file materialized into the revision is listed with its exact-byte SHA-256 so drift from this lock is detectable and treated as failure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "bundle_id", "revision", "generated_at", "generator", "immutable", "files"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "bundle_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing revision number for this bundle_id. Must equal the enclosing directory segment."
+    },
+    "generated_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "source_profile_ref": {
+      "type": "object",
+      "description": "The canonical profile (and its content digest at generation time) this revision was materialized from, so it is always traceable back to source.",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_content_sha256"],
+      "properties": {
+        "profile_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+        "profile_content_sha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Asset content addresses consumed to materialize this revision.",
+      "items": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
+      "uniqueItems": true
+    },
+    "immutable": {
+      "type": "boolean",
+      "const": true,
+      "description": "Always true. Once written, a revision's files are never edited in place; changes always produce a new revision."
+    },
+    "files": {
+      "type": "array",
+      "description": "Every materialized file in this revision, path-relative to the revision root, with its exact-byte hash for lock verification.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size_bytes"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
+          "size_bytes": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

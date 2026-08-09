@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/inventory-report.schema.json",
+  "title": "Inventory Report (v1)",
+  "description": "Schema for state/inventory/reports/<report_id>.json, a summary of one inventory scan pass (inbox intake, drift check, or full reconciliation) over one or more sources. References individual observations by id rather than embedding them, so reports stay small and diffable. Reports are always sanitized \u2014 no personal paths, account IDs, IPs, or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "report_id", "generated_at", "scope", "summary", "sanitized"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "report_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "generated_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["full", "source", "system", "path"]
+        },
+        "selector": {
+          "type": "string",
+          "description": "Required for every kind except \"full\": source id, system id, or a symbolic-root-relative path."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "full" } } },
+          "then": { "properties": { "selector": false } },
+          "else": { "properties": { "selector": true }, "required": ["selector"] }
+        }
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scanned", "matched", "unmatched", "quarantined", "errors"],
+      "properties": {
+        "scanned": { "type": "integer", "minimum": 0 },
+        "matched": { "type": "integer", "minimum": 0 },
+        "unmatched": { "type": "integer", "minimum": 0 },
+        "quarantined": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "observation_refs": {
+      "type": "array",
+      "description": "ids of related state/inventory/observations/<observation_id>.json records.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "sanitized": {
+      "type": "boolean",
+      "const": true,
+      "description": "Always true; asserts this report contains no personal paths, account identifiers, IPs, or secrets."
+    },
+    "notes": { "type": "string" }
+  }
+}

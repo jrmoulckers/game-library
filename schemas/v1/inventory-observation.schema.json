@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/inventory-observation.schema.json",
+  "title": "Inventory Observation (v1)",
+  "description": "Schema for individual records under state/inventory/observations/<observation_id>.json. An observation is one scanned item (file, directory, or external source record) and its provisional match/outcome, before it is promoted, quarantined, or archived. Paths are always sanitized and root-relative via a symbolic token \u2014 never absolute device paths, drive letters, home directories, or account-specific segments.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "observation_id", "report_ref", "observed_at", "kind", "path", "outcome"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "observation_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "report_ref": {
+      "type": "string",
+      "description": "id of the state/inventory/reports/<report_id>.json this observation belongs to."
+    },
+    "observed_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "kind": {
+      "type": "string",
+      "enum": ["file", "directory", "source-record"]
+    },
+    "path": {
+      "$ref": "common.defs.schema.json#/$defs/SymbolicPath",
+      "description": "Sanitized, symbolic-root-relative location of the observed item, e.g. \"${INBOX}/retro/snes/unmatched-01\"."
+    },
+    "sha256": {
+      "$ref": "common.defs.schema.json#/$defs/Sha256Hex",
+      "description": "Present when kind == \"file\" and the file was hashed."
+    },
+    "size_bytes": { "type": "integer", "minimum": 0 },
+    "matched_game_ref": { "$ref": "common.defs.schema.json#/$defs/GameRef" },
+    "matched_release_sha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
+    "outcome": {
+      "type": "string",
+      "enum": ["managed", "tracked-external", "promote-on-approval", "quarantined", "unmatched"],
+      "description": "Result of applying retention policy precedence, plus \"unmatched\" for items with no confident match yet."
+    },
+    "notes": { "type": "string" }
+  }
+}

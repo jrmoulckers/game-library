@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/canonical-profile.schema.json",
+  "title": "Canonical Profile (v1)",
+  "description": "Schema for library/canonical/profiles/<id>.json, the source of truth from which the legacy Decky ABI profile (profiles/<id>.json) is generated. Richer than the legacy shape: artwork is a full content-addressed AssetRef (or null) rather than a bare string, and mods reference canonical games. The generator is responsible for translating this into decky-profile-v1 shape 1:1; the two ids always match.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "id", "name", "artwork", "mods"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": {
+      "$ref": "common.defs.schema.json#/$defs/SafeId",
+      "description": "Must equal the enclosing filename stem, and equal the id of the generated legacy profile."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "theme_ref": {
+      "type": ["string", "null"],
+      "description": "Optional canonical theme id (library/canonical/themes/<id>.json), or null for no theme override."
+    },
+    "artwork": {
+      "description": "Profile-level artwork override as a content-addressed reference, or null meaning no art change (matches legacy artwork:null semantics).",
+      "oneOf": [
+        { "$ref": "common.defs.schema.json#/$defs/AssetRef" },
+        { "type": "null" }
+      ]
+    },
+    "mods": {
+      "type": "array",
+      "description": "Per-game mod selections, unique per game (see common.defs ModAssignment). A complete set fully replaces prior selections for that game.",
+      "items": { "$ref": "common.defs.schema.json#/$defs/ModAssignment" }
+    },
+    "reserved": {
+      "type": "string",
+      "description": "Set only for the two retained special profiles so tooling never garbage-collects them.",
+      "enum": ["deck-default", "steam-default"]
+    }
+  }
+}

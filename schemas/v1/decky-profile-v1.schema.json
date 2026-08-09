@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/decky-profile-v1.schema.json",
+  "title": "Decky Legacy Profile (ABI v1)",
+  "description": "Exact schema for the legacy Decky plugin profile ABI at the generated root profiles/<id>.json. This shape is frozen \u2014 it must never change without a new ABI version \u2014 because the existing Decky plugin reads it directly. It is always generated from library/canonical/profiles/<id>.json, never authored by hand and never the source of truth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "name", "artwork", "mods"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Frozen ABI version marker. Any breaking change to this shape requires version 2 and a migration, never an in-place edit of v1."
+    },
+    "id": {
+      "type": "string",
+      "description": "Must equal the filename stem, i.e. profiles/<id>.json.",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional. Absent entirely when there is no description (not null)."
+    },
+    "artwork": {
+      "description": "Profile-level artwork override. A string identifies the generated legacy artwork path/token; null explicitly means \"no art change\" (leave whatever is currently applied). This field is never omitted \u2014 omission is not a valid substitute for null.",
+      "type": ["string", "null"]
+    },
+    "mods": {
+      "type": "array",
+      "description": "Per-game mod selections. At most one entry per distinct \"game\" value in this array (unique per game) \u2014 enforced by validation tooling in addition to this schema, since plain JSON Schema cannot express uniqueness keyed on a single object property. Each entry is a complete set: applying it fully replaces any prior mod selection for that game, there is no partial/merge semantics.",
+      "items": { "$ref": "common.defs.schema.json#/$defs/ModAssignment" }
+    }
+  },
+  "$comment": "Reserved ids: \"deck-default\" and \"steam-default\" are always retained and never pruned by garbage collection. \"steam-default\" is retained specifically as an empty marker: mods == [] and artwork == null, representing deliberate absence of overrides rather than an unmigrated/missing profile."
+}

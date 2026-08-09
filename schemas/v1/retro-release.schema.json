@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/retro-release.schema.json",
+  "title": "Retro Release (v1)",
+  "description": "Schema for release.json at library/releases/retro/<system>/<sha256>/release.json. A release is one exact byte-for-byte artifact (e.g. a specific ROM/ISO dump). Identity is the full raw SHA-256 of that artifact; filenames are aliases only, never identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "sha256", "system", "size_bytes"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "sha256": {
+      "$ref": "common.defs.schema.json#/$defs/Sha256Hex",
+      "description": "Full raw SHA-256 of the exact release artifact bytes. Must equal the <sha256> directory segment."
+    },
+    "system": { "$ref": "common.defs.schema.json#/$defs/SystemId" },
+    "size_bytes": { "type": "integer", "minimum": 0 },
+    "filename_aliases": {
+      "type": "array",
+      "description": "All filenames under which this exact byte sequence has been observed. Aliases only \u2014 never identity.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "game_ref": {
+      "$ref": "common.defs.schema.json#/$defs/GameRef",
+      "description": "Optional link to the logical retro game (library/games/retro/<system>/<slug>) this release belongs to. Absent until matched."
+    },
+    "observed_from": {
+      "type": "array",
+      "description": "Sources this exact release has been observed from, for provenance and re-acquisition.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_ref", "observed_at"],
+        "properties": {
+          "source_ref": { "type": "string" },
+          "observed_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" }
+        }
+      }
+    },
+    "provenance": { "$ref": "common.defs.schema.json#/$defs/Provenance" },
+    "license": { "$ref": "common.defs.schema.json#/$defs/License" },
+    "notes": { "type": "string" }
+  }
+}

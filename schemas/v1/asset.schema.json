@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.game-library.dev/v1/asset.schema.json",
+  "title": "Asset Metadata (v1)",
+  "description": "Schema for asset.json, stored alongside content.<ext> at library/assets/sha256/<aa>/<hash>/asset.json. Assets are content-addressed by the exact-byte SHA-256 of content.<ext>; the directory hash and this file's sha256 field must match.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "sha256", "content_file", "media_type", "kind", "byte_size", "provenance", "license"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "sha256": {
+      "$ref": "common.defs.schema.json#/$defs/Sha256Hex",
+      "description": "Exact-byte SHA-256 of content.<ext>. Must equal the <hash> directory segment."
+    },
+    "content_file": {
+      "type": "string",
+      "description": "Filename of the sibling content file, e.g. \"content.png\". Never a device-specific or personal filename.",
+      "pattern": "^content\\.[a-z0-9]{1,8}$"
+    },
+    "media_type": {
+      "type": "string",
+      "description": "IANA media type of content.<ext>, e.g. image/png, image/jpeg, video/webm.",
+      "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+    },
+    "kind": { "$ref": "common.defs.schema.json#/$defs/AssetRole" },
+    "byte_size": { "type": "integer", "minimum": 0 },
+    "dimensions": {
+      "type": "object",
+      "description": "Optional pixel dimensions for image/video assets.",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "source_ref": {
+      "type": "string",
+      "description": "Optional id of the library/sources/<source_id>.json this asset was retrieved from."
+    },
+    "provenance": { "$ref": "common.defs.schema.json#/$defs/Provenance" },
+    "license": { "$ref": "common.defs.schema.json#/$defs/License" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "variants": {
+      "type": "array",
+      "description": "Related asset content addresses derived from this asset (e.g. a downscaled thumbnail), each a full AssetRef so role is explicit.",
+      "items": { "$ref": "common.defs.schema.json#/$defs/AssetRef" }
+    }
+  }
+}
