@@ -78,6 +78,38 @@ docs/architecture/     Architecture docs and ADRs (this repo's design record)
 schemas/v1/            JSON Schema 2020-12 contracts for the synced catalog tree
 ```
 
+## Authority
+
+This repository is contract and tooling, not a product application. It holds no
+roadmap, metric, experiment, or compliance evidence of its own. Where an
+organization-wide obligation applies, cite it by stable ID rather than restating
+it here; pin to a commit SHA when exact wording matters.
+
+- Product obligations and outcomes:
+  [jrmoulckers/product](https://github.com/jrmoulckers/product)
+- Engineering mechanisms and evidence:
+  [jrmoulckers/engineering](https://github.com/jrmoulckers/engineering)
+- Design and interface: [jrmoulckers/studio](https://github.com/jrmoulckers/studio)
+- Governance, automation, and shared agent assets:
+  [jrmoulckers/.github](https://github.com/jrmoulckers/.github)
+
+The obligations that bear most directly on this repository's contract are the
+Product compliance ones. `PROD-COMP-006` (permit only reviewed software
+distribution) requires a known license classification and publishing boundary
+before software is used or distributed — the analogous question for third-party
+artwork and metadata is what motivates the required `provenance` and `license`
+fields on [`schemas/v1/asset.schema.json`](schemas/v1/asset.schema.json) and the
+`quarantined` retention outcome for licensing concerns. `PROD-COMP-005` (bound
+retention and terminal disposition) is the obligation behind the layered
+retention policy in
+[ADR-0002](docs/architecture/decisions/0002-content-addressed-assets-and-retention.md),
+and `PROD-COMP-002` (bound processing by purpose and necessity) is why sanitized
+baselines under `reports/baseline/` carry aggregates only.
+
+Compliance obligations establish governance and qualified-review triggers; they
+are not legal advice, and nothing in this repository determines licensing
+validity for a given asset.
+
 Go source, tests, and CI configuration in this repository are owned by their
 respective engineering roles per each area's `AGENTS.md`; this README's
 "Quick start"/"Repository layout" sections are maintained for navigation only —
