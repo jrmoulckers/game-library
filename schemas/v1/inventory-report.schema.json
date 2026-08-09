@@ -2,60 +2,116 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.game-library.dev/v1/inventory-report.schema.json",
   "title": "Inventory Report (v1)",
-  "description": "Schema for state/inventory/reports/<report_id>.json, a summary of one inventory scan pass (inbox intake, drift check, or full reconciliation) over one or more sources. References individual observations by id rather than embedding them, so reports stay small and diffable. Reports are always sanitized \u2014 no personal paths, account IDs, IPs, or secrets.",
+  "description": "Validates internal/model.Inventory exactly as produced by internal/inventory.Scan (privacy=\"private\") and internal/inventory.Sanitize (privacy=\"sanitized\"), and written/read via internal/report (gamelib inventory scan / report summary). A private report is for local-only use (never synced/shared) and may include per-file observations with root-relative paths; a sanitized report strips observations entirely and clears relativePath from any remaining issues, so it is safe to attach to bug reports.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "report_id", "generated_at", "scope", "summary", "sanitized"],
+  "required": ["version", "toolVersion", "createdAt", "privacy", "roots", "duplicateSummary"],
   "properties": {
-    "$schema": { "type": "string" },
-    "schema_version": { "type": "integer", "const": 1 },
-    "report_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
-    "generated_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
-    "scope": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind"],
-      "properties": {
-        "kind": {
-          "type": "string",
-          "enum": ["full", "source", "system", "path"]
-        },
-        "selector": {
-          "type": "string",
-          "description": "Required for every kind except \"full\": source id, system id, or a symbolic-root-relative path."
-        }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "kind": { "const": "full" } } },
-          "then": { "properties": { "selector": false } },
-          "else": { "properties": { "selector": true }, "required": ["selector"] }
-        }
-      ]
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Must equal internal/model.SchemaVersion."
     },
-    "summary": {
+    "toolVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "gamelib build/version string that produced this report."
+    },
+    "createdAt": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
+    "privacy": {
+      "type": "string",
+      "enum": ["private", "sanitized"],
+      "description": "\"private\" reports contain root-relative paths (never absolute filesystem paths) and may include the full observations[] array. \"sanitized\" reports (internal/inventory.Sanitize) contain no observations and no relative paths at all \u2014 issues[].relativePath is cleared, not merely emptied, so the key is absent."
+    },
+    "roots": {
+      "type": "array",
+      "description": "One summary per configured root that was scanned, present in both private and sanitized reports.",
+      "items": { "$ref": "#/$defs/RootSummary" }
+    },
+    "observations": {
+      "type": "array",
+      "description": "Optional (model.Inventory.Observations, json:\"observations,omitempty\"). Present only in private reports produced directly by inventory scan; absent from sanitized reports.",
+      "items": { "$ref": "inventory-observation.schema.json" }
+    },
+    "duplicateSummary": { "$ref": "#/$defs/DuplicateSummary" },
+    "issues": {
+      "type": "array",
+      "description": "Optional validation issues surfaced during scan (model.Inventory.Issues, json:\"issues,omitempty\").",
+      "items": { "$ref": "#/$defs/ValidationIssue" }
+    }
+  },
+  "if": {
+    "properties": { "privacy": { "const": "sanitized" } },
+    "required": ["privacy"]
+  },
+  "then": {
+    "properties": {
+      "version": true, "toolVersion": true, "createdAt": true, "privacy": true,
+      "roots": true, "duplicateSummary": true, "issues": true
+    },
+    "not": {
+      "properties": { "observations": true },
+      "required": ["observations"]
+    }
+  },
+  "$defs": {
+    "RootSummary": {
       "type": "object",
+      "description": "model.RootSummary. Only id/kind/fileCount/totalBytes/mediaCount/imageCount are always present; system and the three map fields are omitted when empty.",
       "additionalProperties": false,
-      "required": ["scanned", "matched", "unmatched", "quarantined", "errors"],
+      "required": ["id", "kind", "fileCount", "totalBytes", "mediaCount", "imageCount"],
       "properties": {
-        "scanned": { "type": "integer", "minimum": 0 },
-        "matched": { "type": "integer", "minimum": 0 },
-        "unmatched": { "type": "integer", "minimum": 0 },
-        "quarantined": { "type": "integer", "minimum": 0 },
-        "errors": { "type": "integer", "minimum": 0 }
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "system": { "type": "string" },
+        "fileCount": { "type": "integer", "minimum": 0 },
+        "totalBytes": { "type": "integer", "minimum": 0 },
+        "mediaCount": { "type": "integer", "minimum": 0 },
+        "imageCount": { "type": "integer", "minimum": 0 },
+        "extensions": {
+          "type": "object",
+          "description": "Optional histogram of bare extension -> file count.",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "roles": {
+          "type": "object",
+          "description": "Optional histogram of inferred role -> file count.",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "dimensions": {
+          "type": "object",
+          "description": "Optional histogram of \"<width>x<height>\" -> file count.",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
       }
     },
-    "observation_refs": {
-      "type": "array",
-      "description": "ids of related state/inventory/observations/<observation_id>.json records.",
-      "items": { "type": "string" },
-      "uniqueItems": true
+    "DuplicateSummary": {
+      "type": "object",
+      "description": "model.DuplicateSummary. All five counters are always present (no omitempty in Go), and are 0 rather than absent when there is nothing to report.",
+      "additionalProperties": false,
+      "required": ["groups", "copies", "excessBytes", "crossRootGroups", "uniqueFileHashes"],
+      "properties": {
+        "groups": { "type": "integer", "minimum": 0, "description": "Number of distinct SHA-256 values with more than one occurrence." },
+        "copies": { "type": "integer", "minimum": 0, "description": "Total redundant file occurrences across all duplicate groups (occurrences - 1 per group, summed)." },
+        "excessBytes": { "type": "integer", "minimum": 0, "description": "Bytes that could be reclaimed by de-duplicating all groups." },
+        "crossRootGroups": { "type": "integer", "minimum": 0, "description": "Duplicate groups whose occurrences span more than one root." },
+        "uniqueFileHashes": { "type": "integer", "minimum": 0, "description": "Total distinct SHA-256 values observed across all scanned files." }
+      }
     },
-    "sanitized": {
-      "type": "boolean",
-      "const": true,
-      "description": "Always true; asserts this report contains no personal paths, account identifiers, IPs, or secrets."
-    },
-    "notes": { "type": "string" }
+    "ValidationIssue": {
+      "type": "object",
+      "description": "model.ValidationIssue. rootId/relativePath are omitted (not merely empty) when not applicable to the issue; code/message are always present.",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "rootId": { "type": "string", "minLength": 1 },
+        "relativePath": {
+          "$ref": "common.defs.schema.json#/$defs/SafeRelativeSegment",
+          "description": "Root-relative path the issue pertains to. Always absent in sanitized reports."
+        },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
   }
 }

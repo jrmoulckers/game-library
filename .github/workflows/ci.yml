@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Format check
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+      - name: Check committed reports for absolute personal paths
+        shell: pwsh
+        run: |
+          $matches = Get-ChildItem reports/baseline -Recurse -File -ErrorAction SilentlyContinue |
+            Select-String -Pattern '([A-Za-z]:\\Users\\|/home/[^/]+/|userdata\\[0-9]+|userdata/[0-9]+)'
+          if ($matches) {
+            $matches | ForEach-Object { Write-Error $_ }
+            exit 1
+          }

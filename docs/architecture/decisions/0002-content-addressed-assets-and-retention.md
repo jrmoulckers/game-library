@@ -15,17 +15,16 @@ times they were imported, and that makes tampering or silent substitution obviou
 
 ## Decision
 
-- **Storage:** every asset is stored at
-  `library/assets/sha256/<aa>/<hash>/{asset.json,content.ext}` where `<hash>` is the
-  exact-byte SHA-256 of `content.ext` and `<aa>` is its first two hex characters
-  (fan-out directory to keep directory listings small). Two imports of identical
-  bytes always resolve to the same path; there is exactly one copy. `asset.schema.json`
-  requires `sha256`, `provenance`, and `license` on every asset — provenance and
-  licensing are never optional or implicit.
-- **Retention precedence:** policies live at `library/policies/<policy_id>.json`
-  (`policy.schema.json`) and apply at exactly one scope level: **asset > role >
-  system > source > global**, most specific wins, evaluated as a strict total order
-  (see `../identity-and-policy.md` for the full table and worked examples).
+- **Storage:** every tracked asset has a record at
+  `library/assets/sha256/<aa>/<hash>/asset.json`, where `<hash>` is the exact-byte
+  SHA-256 and `<aa>` is its first two hex characters. `managed` assets also have
+  `content.<ext>` in that directory; external, approval-gated, and quarantined
+  records may omit the content file while preserving checksum, provenance, and
+  licensing. Two managed imports of identical bytes resolve to one canonical copy.
+- **Retention precedence:** one `library/policy.json` file contains a global
+  `default` plus scoped rules. Matching rules use additive specificity:
+  **asset (+8) > role (+4) > system (+2) > source (+1) > default**, most
+  specific wins (see `../identity-and-policy.md`).
 - **Outcomes** are one of `managed`, `tracked-external`, `promote-on-approval`, or
   `quarantined`. `promote-on-approval` requires an explicit, auditable approval step;
   no code path may promote quarantined or tracked-external bytes into `managed` just

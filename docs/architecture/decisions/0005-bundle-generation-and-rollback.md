@@ -9,27 +9,27 @@ Accepted
 Frontends (Decky's legacy roots, and potentially future ES-DE/RomM-facing
 materializations) need a real directory of files on disk, not a database query —
 but those directories are entirely derived from canonical data
-(`library/canonical/**`, `library/assets/**`). If we let generation write in place,
+(`library/profiles/**`, `library/mods/**`, `library/assets/**`). If generation writes in place,
 a half-finished or failed generation run can leave a device with a broken,
 inconsistent directory and no way back to the last good state.
 
 ## Decision
 
-- Every generated directory bundle lives at `bundles/<bundle_id>/<revision>/`,
-  where `<revision>` is a monotonically increasing integer. Once written, a
-  revision's files are **immutable** — never edited in place. A new generation run
-  always produces a new revision.
-- Each revision carries `manifest.lock.json` (`bundle-lock.schema.json`): every
+- Every generated directory bundle lives at
+  `bundles/<profile-id>/<manifest-sha256>/`, where the revision is the full
+  SHA-256 of the canonical profile JSON. Once written, a revision's files are
+  **immutable** and identical inputs resolve to the same revision.
+- Each revision carries `bundle.lock.json` (`bundle-lock.schema.json`): every
   materialized file with its path and exact-byte SHA-256, the canonical profile id
   and content-digest it was generated from, and the asset digests it consumed.
   This is the hash-locked manifest that later drift-detection compares against —
   any mismatch between the manifest and the files on disk is treated as failure,
   not silently repaired.
-- `bundles/<bundle_id>/current.json` (`bundle-current.schema.json`) is a small
-  pointer file naming the live `current_revision` and the `previous_revision`.
+- `bundles/<profile-id>/current.json` (`bundle-current.schema.json`) is a small
+  pointer file naming the live `currentRevision` and `previousRevision` hashes.
   Publishing is: generate into a new revision directory (staging), verify its lock
   manifest, then atomically rewrite `current.json` to point at it. **Rollback is
-  re-pointing `current.json` back to `previous_revision`** — it never deletes or
+  re-pointing `current.json` back to `previousRevision`** — it never deletes or
   edits a revision directory, so rollback is always available as long as the prior
   revision hasn't been explicitly pruned by an operator (no auto-purge).
 
@@ -42,7 +42,8 @@ inconsistent directory and no way back to the last good state.
 - **Harder:** disk usage grows with retained revisions unless an operator prunes
   old ones explicitly (by design — no automatic deletion, see
   `../migration-and-recovery.md`); consumers must always resolve "current" through
-  `current.json` rather than assuming the latest numeric revision is live.
-- Bundles are always reproducible from `library/canonical/**` + `library/assets/**`,
+  `current.json` rather than inferring a revision from directory order.
+- Bundles are always reproducible from `library/profiles/**`,
+  `library/mods/**`, and `library/assets/**`,
   which is precisely why they are safe to treat as generated/disposable rather than
   as a second source of truth (consistent with ADR-0003's legacy Decky roots).

@@ -2,39 +2,66 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.game-library.dev/v1/inventory-observation.schema.json",
   "title": "Inventory Observation (v1)",
-  "description": "Schema for individual records under state/inventory/observations/<observation_id>.json. An observation is one scanned item (file, directory, or external source record) and its provisional match/outcome, before it is promoted, quarantined, or archived. Paths are always sanitized and root-relative via a symbolic token \u2014 never absolute device paths, drive letters, home directories, or account-specific segments.",
+  "description": "Validates internal/model.Observation (and its nested MediaFacts) exactly as produced by internal/inventory.Scan. One observation describes a single regular file found under a configured root. Observations only ever appear inline inside a private inventory.json document (model.Inventory.Observations) \u2014 see inventory-report.schema.json \u2014 never as their own standalone file; this schema exists so the shape is reusable/independently referenceable and testable.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "observation_id", "report_ref", "observed_at", "kind", "path", "outcome"],
+  "required": ["rootId", "rootKind", "relativePath", "size", "sha256", "media"],
   "properties": {
-    "$schema": { "type": "string" },
-    "schema_version": { "type": "integer", "const": 1 },
-    "observation_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
-    "report_ref": {
-      "type": "string",
-      "description": "id of the state/inventory/reports/<report_id>.json this observation belongs to."
+    "rootId": {
+      "$ref": "common.defs.schema.json#/$defs/SafeId",
+      "description": "The model.Root.ID this file was scanned from (internal/config.IsSafeID)."
     },
-    "observed_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
-    "kind": {
+    "rootKind": {
       "type": "string",
-      "enum": ["file", "directory", "source-record"]
+      "minLength": 1,
+      "description": "Copy of the owning model.Root.Kind at scan time (e.g. \"decky-catalog\", \"steam-grid\", \"esde-media\")."
     },
-    "path": {
-      "$ref": "common.defs.schema.json#/$defs/SymbolicPath",
-      "description": "Sanitized, symbolic-root-relative location of the observed item, e.g. \"${INBOX}/retro/snes/unmatched-01\"."
+    "relativePath": {
+      "$ref": "common.defs.schema.json#/$defs/SafeRelativeSegment",
+      "description": "Forward-slash path relative to the root's own filesystem path (filepath.Rel + ToSlash). Root-relative only \u2014 a private inventory never contains an absolute device path here."
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "File size in bytes (model.Observation.Size, int64)."
     },
     "sha256": {
       "$ref": "common.defs.schema.json#/$defs/Sha256Hex",
-      "description": "Present when kind == \"file\" and the file was hashed."
+      "description": "Exact-byte SHA-256 of the file, always computed by internal/inventory.Scan."
     },
-    "size_bytes": { "type": "integer", "minimum": 0 },
-    "matched_game_ref": { "$ref": "common.defs.schema.json#/$defs/GameRef" },
-    "matched_release_sha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
-    "outcome": {
+    "media": { "$ref": "#/$defs/MediaFacts" },
+    "system": {
       "type": "string",
-      "enum": ["managed", "tracked-external", "promote-on-approval", "quarantined", "unmatched"],
-      "description": "Result of applying retention policy precedence, plus \"unmatched\" for items with no confident match yet."
+      "description": "Optional inferred/declared system (internal/media.InferSystem), e.g. a retro system slug."
     },
-    "notes": { "type": "string" }
+    "identityHint": {
+      "type": "string",
+      "description": "Optional deterministic identity hint (internal/media.InferIdentityHint), one of the \"steam:<appid>\", \"playnite:<uuid>\", or \"retro:<system>:<slug>\" conventions consumed by internal/identity.Propose."
+    }
+  },
+  "$defs": {
+    "MediaFacts": {
+      "type": "object",
+      "description": "model.MediaFacts. Only \"mime\" is required (no omitempty in Go); the rest are optional.",
+      "additionalProperties": false,
+      "required": ["mime"],
+      "properties": {
+        "extension": {
+          "$ref": "common.defs.schema.json#/$defs/Extension",
+          "description": "Bare lowercase extension without a leading dot, when detected."
+        },
+        "mime": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Detected IANA media type (internal/media.detectMIME)."
+        },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "role": {
+          "$ref": "common.defs.schema.json#/$defs/AssetRole",
+          "description": "Inferred presentation role (internal/media.InferRole), when recognized."
+        }
+      }
+    }
   }
 }

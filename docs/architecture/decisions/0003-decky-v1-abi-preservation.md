@@ -24,20 +24,25 @@ without breaking it.
   existing plugin exactly: `version` is `const 1`; `id` is the filename stem and
   must match `^[a-z0-9][a-z0-9._-]*$`; `id`/`name` required; `description` optional
   (omitted, never present-as-null); `artwork` is `string | null` and **required**
-  (`null` explicitly means "no art change", never "unset"); `mods` is a list of
-  `{game, set}` unique per `game`, where each entry is a **complete set** (applying
-  it fully replaces prior selections for that game — no merge/partial semantics).
-  `deck-default` and `steam-default` are reserved ids that are always retained;
-  `steam-default` is retained specifically as the **empty marker** profile
-  (`mods: []`, `artwork: null`).
+  (`null` explicitly means "no art change", never "unset"); `mods` is optional
+  on input and defaults to an empty list, with `{game, set}` entries unique per
+  `game`. Each entry is a **complete set** (applying it fully replaces prior
+  selections for that game — no merge/partial semantics). Deterministic generated
+  profiles emit explicit `mods: []` when empty.
+  `deck-default` and `steam-default` are reserved ids that are always retained.
+  The real `steam-default` profile has `mods: []` and
+  `artwork: "steam-default"`; its generated grid contains only
+  `.deck-profile-empty`. `artwork: null` has the distinct meaning "leave current
+  artwork unchanged."
 - Author richer data in **`canonical-profile.schema.json`** under
-  `library/canonical/profiles/<id>.json` — same `id`/reserved-id conventions, but
-  `artwork` is a full `AssetRef` (or `null`) and profiles may carry a `theme_ref`.
+  `library/profiles/<id>/profile.json` — same id conventions, plus per-game
+  identity mappings, content-addressed role selections, retro targets, theme,
+  and canonical mod selections.
 - The legacy `profiles/<id>.json` tree is **generated, never hand-authored**: a
   generator reads the canonical profile and deterministically produces the exact
   v1 shape 1:1, sharing the same `id`. `artwork/` and `mods/` at the tree root are
   likewise generated legacy roots, materialized from `library/assets/**` and
-  `library/canonical/mods/**` respectively.
+  `library/mods/**` respectively.
 
 ## Consequences
 
@@ -45,11 +50,12 @@ without breaking it.
   canonical data can evolve (new fields, richer references) without ever touching
   the frozen ABI; the frozen shape is small enough to validate trivially on every
   generation run.
-- **Harder:** every canonical→legacy field mapping (e.g. `AssetRef` → legacy
-  artwork string) must be defined and kept stable in the generator, documented in
+- **Harder:** every canonical-to-legacy profile/game/role mapping must be defined
+  and kept stable in the generator, documented in
   `../adapters.md`; a genuinely breaking legacy need would require a new `version: 2`
   ABI and a migration, never an in-place edit of v1.
 - Because the legacy tree is generated, it is also disposable and reproducible: it
-  can always be regenerated from `library/canonical/**` plus `library/assets/**`,
+  can always be regenerated from `library/profiles/**`, `library/mods/**`, and
+  `library/assets/**`,
   which is what makes it safe to treat as a generated bundle (ADR-0005) rather than
   a second source of truth.

@@ -7,12 +7,24 @@ practical reference for both models.
 
 | Domain | Canonical identity | Schema | Notes |
 |---|---|---|---|
-| PC / Steam | Steam AppID (integer) | `game.schema.json` (`pc.appid`) | Stable, vendor-issued, first-class. |
-| PC / other storefronts | Storefront's own opaque ID | `game.schema.json` (`pc.storefront_id`) | Scoped by `pc.store`; format is whatever that storefront uses. |
-| Retro (logical game) | `system` + `slug` | `game.schema.json` (`retro.system`, `retro.slug`) | The concept "this game on this system", independent of any one file. |
-| Retro (exact release) | Full raw SHA-256 of the artifact | `retro-release.schema.json` (`sha256`) | Exact bytes. Never a truncated/rolling/partial hash. |
+| PC / Steam | Steam AppID (integer) | `game.schema.json` (`pc.appid`) — **forward-looking**; today expressed as a profile's `games[].identities.steam` value, see below | Stable, vendor-issued, first-class. |
+| PC / other storefronts | Storefront's own opaque ID | `game.schema.json` (`pc.storefront_id`) — **forward-looking** | Scoped by `pc.store`; format is whatever that storefront uses. |
+| Retro (logical game) | `system` + `slug` | `game.schema.json` (`retro.system`, `retro.slug`) — **forward-looking**; today expressed as a profile's `games[].retro.{system,stem}`, see below | The concept "this game on this system", independent of any one file. |
+| Retro (exact release) | Full raw SHA-256 of the artifact | `retro-release.schema.json` (`sha256`) — **forward-looking** | Exact bytes. Never a truncated/rolling/partial hash. |
 | Asset | Exact-byte SHA-256 of `content.<ext>` | `asset.schema.json` (`sha256`) | De-duplicates automatically; a re-encode is a new asset, not an edit. |
-| Playnite entry | **Not canonical** — UUID kept only in adapter-only mapping | `playnite-mapping.schema.json` | See below. |
+| Playnite entry | **Not canonical** — UUID kept only in an adapter-only mapping | `playnite-mapping.schema.json` — **forward-looking**; today expressed as a profile's `games[].identities.playnite` value | See below. |
+
+**Implementation note:** the currently implemented Go model (`model.Profile` /
+`canonical-profile.schema.json`) does not yet have a standalone game/release/
+mapping registry. Instead, each profile's `games[]` entry carries its own
+free-form `id` (e.g. `"steam:123"`, `"retro:n64:example-game"`, following the
+same `steam:`/`playnite:`/`retro:` convention `internal/identity` proposes from
+scanned files), an `identities{}` map of adapter name → native id (Playnite UUID
+goes here, under the `"playnite"` key), and an optional `retro{system,stem}`
+block for the logical retro game. The `game.schema.json` /
+`retro-release.schema.json` / `playnite-mapping.schema.json` tables above
+describe the agreed target shape for a future standalone registry, not
+anything the CLI reads or writes today.
 
 ### Filenames and aliases are never identity
 
@@ -23,39 +35,51 @@ on `sha256`, never on filename, extension, or path.
 
 ### Playnite UUIDs are adapter-only
 
-A Playnite UUID is a property of one Playnite installation's local database. It is
-recorded **only** in `library/mappings/playnite/<uuid>.json`
-(`playnite-mapping.schema.json`), which:
-
-- points at a canonical `game_ref` (Steam AppID, storefront ID, or retro slug),
-- is flagged `adapter_only: true` (schema-fixed `const true`) so nothing can
-  mistake it for identity,
-- carries a `confidence` of `exact`, `fuzzy`, or `manual`, so low-confidence
-  auto-matches are distinguishable from operator-confirmed ones.
+A Playnite UUID is a property of one Playnite installation's local database. It
+must never be treated as canonical identity. Today it is recorded only as the
+`"playnite"` entry in a profile's `games[].identities` map (`model.ProfileGame`,
+consumed by `internal/profile`'s adapter destination resolution, never written
+back to any Playnite database). The forward-looking `playnite-mapping.schema.json`
+describes a future standalone `library/mappings/playnite/<uuid>.json` file with
+the same intent — pointing at a canonical game reference, flagged
+`adapter_only: true`, carrying a `confidence` of `exact`/`fuzzy`/`manual` — for
+once a standalone game registry exists.
 
 If Playnite's database is rebuilt and issues a new UUID for the "same" game, only
-the mapping file needs to change — the canonical game, its assets, and its
-history are unaffected.
+the `identities.playnite` value (or, in the forward-looking model, the mapping
+file) needs to change — the canonical game, its assets, and its history are
+unaffected.
 
 ## Retention policy precedence
 
-Policies (`policy.schema.json`) live at `library/policies/<policy_id>.json`. Each
-policy applies at **exactly one** scope level:
+Policy is a **single** file (`policy.schema.json`, `model.PolicyFile`, validated
+and resolved by `internal/policy`): one global `default` outcome plus an
+optional `rules[]` list, each rule an independent combination of zero or more
+selectors (`source`, `system`, `role`, `assetSha256`) plus a required `mode`.
+There is no one-file-per-scope-level layout — a single rule may combine
+selectors (e.g. `system` + `role` together).
+
+Precedence is an additive specificity score computed per rule
+(`internal/policy.specificity`), most specific wins:
 
 ```
-asset  >  role  >  system  >  source  >  global
-(most specific)                          (least specific, fallback)
+assetSha256 (+8)  >  role (+4)  >  system (+2)  >  source (+1)  >  default (0, global fallback)
+(most specific)                                                    (least specific, fallback)
 ```
 
-- `global` policies have no `selector` and apply when nothing more specific matches.
-- `source`, `system`, and `role` policies apply to everything from that source,
-  system, or asset role, respectively (`selector` required).
-- `asset` policies apply to one exact SHA-256 and always win over every other
-  level, no matter what a broader policy says.
-
-Because each level's selector is unique, there is never a tie to break — for any
-given piece of data there is exactly one applicable policy per level, and the
-first one found walking the list above (asset first) is authoritative.
+- `default` is the global fallback outcome, used when no rule matches at all.
+- A rule with only `source` set (weight 1) is the least specific override; a
+  rule with only `assetSha256` set (weight 8) always wins over any rule that
+  does not also set `assetSha256`, regardless of how many other selectors that
+  rule sets.
+- `internal/policy.Resolve` picks the single highest-scoring matching rule for
+  a given observation; `internal/policy.Validate` rejects two rules that share
+  the exact same `(source, system, role, assetSha256)` selector tuple —
+  including the all-empty tuple, so at most one selector-less rule may exist
+  — as a "duplicate policy selector" configuration error. This whole-tuple
+  uniqueness rule is documented rather than schema-enforced (see
+  `policy.schema.json`'s `$comment`), since plain JSON Schema `uniqueItems`
+  cannot express "reject duplicates on a derived key ignoring `mode`."
 
 ### Outcomes
 
@@ -69,21 +93,23 @@ first one found walking the list above (asset first) is authoritative.
 ### Promotion is never implicit
 
 Selecting an asset for presentation (a profile referencing it, a bundle
-materializing it) is a pure read of an existing `AssetRef`. Nothing in the
+materializing it) is a pure read of an existing asset reference. Nothing in the
 schemas or the generation path allows presentation selection to change an
-asset's `RetentionOutcome` — promotion out of `promote-on-approval` is always a
+asset's retention outcome — promotion out of `promote-on-approval` is always a
 separate, explicit, auditable step, never a side effect of "someone chose to
 display this."
 
 ## Worked example
 
-A SteamGridDB-sourced grid image for a well-established Steam game:
+A SteamGridDB-sourced grid image for a well-established Steam game, evaluated
+against a policy file with `default: "quarantined"` and two rules —
+`{role: "grid", mode: "managed"}` (weight 4) and
+`{source: "steamgriddb", mode: "promote-on-approval"}` (weight 1):
 
-1. No `asset`-level policy exists for its specific hash → check `role`.
-2. A `role` policy for `grid` says `managed` → check nothing more specific
-   contradicts it (there isn't one) → outcome is `managed`.
+1. Both rules match this observation (its inferred role is `grid` and its
+   source root is `steamgriddb`); their scores are 4 and 1 respectively.
+2. The `role` rule has the higher score, so it wins: outcome is `managed`.
 
-The same image, if a `source`-level policy for `steamgriddb` said
-`promote-on-approval` and no more specific `role`/`asset` policy overrode it, would
-instead sit in `state/` until approved — the `role` policy above only wins because
-it is more specific than `source`, not because it was written more recently.
+The same image would instead sit in `state/` pending approval only if the
+`role` rule did not exist (or matched a different role) — the `source` rule
+only loses because it is less specific, not because of file order.

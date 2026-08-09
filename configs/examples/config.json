@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "roots": [
+    {
+      "id": "canonical-catalog",
+      "kind": "decky-catalog",
+      "path": "D:\\GamingProfiles"
+    },
+    {
+      "id": "desktop-steam-grid",
+      "kind": "steam-grid",
+      "path": "D:\\FrontendState\\Steam\\grid"
+    },
+    {
+      "id": "retro-media",
+      "kind": "esde-media",
+      "path": "D:\\FrontendState\\ES-DE\\downloaded_media"
+    }
+  ],
+  "policy": {
+    "version": 1,
+    "default": "tracked-external",
+    "rules": [
+      {
+        "source": "canonical-catalog",
+        "mode": "managed"
+      },
+      {
+        "system": "n64",
+        "role": "video",
+        "mode": "tracked-external"
+      },
+      {
+        "system": "n64",
+        "role": "manual",
+        "mode": "managed"
+      }
+    ]
+  }
+}

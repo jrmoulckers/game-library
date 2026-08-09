@@ -2,58 +2,77 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.game-library.dev/v1/migration-manifest.schema.json",
   "title": "Migration / Export Manifest (v1)",
-  "description": "Schema for state/migration/<migration_id>/manifest.json, describing one import, export, upgrade, or rollback operation end-to-end: staged first, applied atomically, always with a recorded rollback path. Never contains personal paths, account IDs, IPs, or secrets \u2014 locations are symbolic-root-relative and descriptions are sanitized.",
+  "description": "Validates internal/model.Manifest / model.Action exactly as produced by internal/manifest and internal/profile (import plan, bundle plan, per-adapter export plan) and read back by `gamelib manifest verify`. This is a dry-run/plan contract only: every gamelib subcommand that emits one of these documents is a planner, not an applier \u2014 there is no \"apply\" command, and no field here represents an executed/rolled-back state. Applied and rollback record shapes are intentionally left for a future schema once that functionality exists in the Go tooling.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schema_version", "migration_id", "kind", "created_at", "staging_path", "atomic_publish", "steps"],
+  "required": ["version", "toolVersion", "operationId", "kind", "actions"],
   "properties": {
-    "$schema": { "type": "string" },
-    "schema_version": { "type": "integer", "const": 1 },
-    "migration_id": { "$ref": "common.defs.schema.json#/$defs/SafeId" },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Must equal internal/model.SchemaVersion."
+    },
+    "toolVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "gamelib build/version string that produced this manifest."
+    },
+    "operationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier for this planning run, unique enough to correlate a manifest with its reports/logs. Never an account ID or personal identifier."
+    },
     "kind": {
       "type": "string",
-      "enum": ["import", "export", "upgrade", "rollback"]
+      "minLength": 1,
+      "description": "Dynamically constructed plan kind, e.g. \"import-plan\", \"bundle-plan\", \"<adapter>-export-plan\" (steam/decky/playnite/esde/romm). Not a fixed enum in Go \u2014 new adapters/planners add new kind strings without a schema change."
     },
-    "created_at": { "$ref": "common.defs.schema.json#/$defs/Timestamp" },
-    "source_description": {
+    "sourceDigest": {
       "type": "string",
-      "description": "Sanitized, human-readable description of the origin (e.g. \"Playnite export file, adapter v3\"), never a literal personal path or account id."
+      "description": "Optional (model.Manifest.SourceDigest, json:\"sourceDigest,omitempty\"). Opaque digest of the planning input (e.g. a profile revision or scan snapshot) used to detect drift between plan and apply time."
     },
-    "target_description": {
-      "type": "string",
-      "description": "Sanitized, human-readable description of the destination."
-    },
-    "staging_path": {
-      "$ref": "common.defs.schema.json#/$defs/SymbolicPath",
-      "description": "Symbolic-root-relative staging location. All changes land here first; nothing is written to a live root until atomic publish succeeds."
-    },
-    "atomic_publish": {
-      "type": "boolean",
-      "description": "True when the publish step is a single atomic swap (e.g. directory rename/pointer update) rather than an in-place multi-file write."
-    },
-    "checksum_manifest_ref": {
-      "type": "string",
-      "description": "Optional pointer to a bundle-lock manifest or equivalent hash-locked file list used to verify staged output before publish."
-    },
-    "rollback_ref": {
-      "type": "string",
-      "description": "Optional id of a prior migration or bundle revision to restore to if this operation must be undone. No auto-purge: prior states referenced here are retained, not deleted, until an operator explicitly prunes them."
-    },
-    "steps": {
+    "actions": {
       "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["order", "action", "status"],
-        "properties": {
-          "order": { "type": "integer", "minimum": 1 },
-          "action": { "type": "string", "minLength": 1 },
-          "status": {
-            "type": "string",
-            "enum": ["pending", "staged", "applied", "rolled-back", "failed"]
-          },
-          "details": { "type": "string" }
+      "description": "Always present as a key (model.Manifest.Actions has no omitempty), though may be an empty array when a plan has nothing to do.",
+      "items": { "$ref": "#/$defs/Action" }
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Optional (model.Manifest.Warnings, json:\"warnings,omitempty\"), free-form human-readable planning warnings that did not block the plan.",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "Action": {
+      "type": "object",
+      "description": "model.Action. \"action\" and \"reason\" are always present; every source*/destination* field is independently optional (omitempty) since not all action kinds populate all of them (e.g. a \"skip\" or \"blocked\" action may omit destination fields entirely).",
+      "additionalProperties": false,
+      "required": ["action", "reason"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Planned operation kind. Not a fixed enum in Go; observed values in internal/manifest and internal/profile include \"copy\", \"skip\", \"quarantine\", \"blocked\", and \"render\"."
+        },
+        "sourceRoot": { "type": "string", "description": "Root ID the source path is relative to, when the action reads from a scanned root." },
+        "sourcePath": { "$ref": "common.defs.schema.json#/$defs/SafeRelativeSegment" },
+        "sourceSha256": { "$ref": "common.defs.schema.json#/$defs/Sha256Hex" },
+        "sourceSize": { "type": "integer", "minimum": 0 },
+        "destinationRoot": { "type": "string", "description": "Symbolic root token/id the destination path is relative to." },
+        "destinationPath": { "$ref": "common.defs.schema.json#/$defs/SafeRelativeSegment" },
+        "expectedDestination": {
+          "type": "string",
+          "description": "Full expected destination path/URI computed at plan time, used by `gamelib manifest verify` to detect drift before any future apply step."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable justification for this action (e.g. why a file was skipped or quarantined, or which policy rule matched)."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional free-form key/value metadata (model.Action.Metadata, map[string]string, omitempty).",
+          "additionalProperties": { "type": "string" }
         }
       }
     }

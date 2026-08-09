@@ -11,10 +11,15 @@
     },
     "SafeId": {
       "type": "string",
-      "description": "Filesystem- and URL-safe identifier. Matches the Decky v1 safe-ID rule exactly so canonical and legacy identifiers stay interchangeable.",
+      "description": "Filesystem- and URL-safe identifier. Matches internal/config.IsSafeID: ^[a-z0-9][a-z0-9._-]*$, plus tooling additionally rejects reserved Windows device names case-insensitively (CON, PRN, AUX, NUL, COM1-9, LPT1-9) which this pattern alone cannot express.",
       "pattern": "^[a-z0-9][a-z0-9._-]*$",
       "minLength": 1,
       "maxLength": 200
+    },
+    "ProfileGameID": {
+      "type": "string",
+      "description": "Local identifier for a game entry within a profile (model.ProfileGame.ID), e.g. \"steam:123\" or \"retro:n64:example-game\". internal/profile only requires this to be non-empty and unique within the profile \u2014 it is free-form and, unlike SafeId, may contain characters such as \":\".",
+      "minLength": 1
     },
     "Slug": {
       "type": "string",
@@ -34,21 +39,42 @@
       "pattern": "^\\$\\{[A-Z][A-Z0-9_]*\\}(/[^\\s]+)*$",
       "minLength": 1
     },
+    "SafeRelativeSegment": {
+      "type": "string",
+      "description": "A relative path/stem accepted by internal/profile.safeRelativePath and internal/manifest.safeRelativePath: non-empty, forward slashes only, no NUL, drive prefix, absolute path, or parent traversal segment.",
+      "minLength": 1,
+      "allOf": [
+        { "pattern": "^[^/\\\\][^\\\\]*$" },
+        { "not": { "pattern": "^[A-Za-z]:" } },
+        { "not": { "pattern": "(^|/)\\.\\.(/|$)" } }
+      ]
+    },
+    "Extension": {
+      "type": "string",
+      "description": "Bare file extension without a leading dot, e.g. \"png\", \"pdf\". internal/profile validates this case-insensitively against ^[a-z0-9]{1,8}$ after lowercasing, so any 1-8 character alphanumeric value is accepted regardless of case.",
+      "pattern": "^[A-Za-z0-9]{1,8}$"
+    },
     "AssetRole": {
       "type": "string",
-      "description": "Semantic role an asset plays in presentation. Distinct from media type/format.",
+      "description": "Semantic role an asset plays in presentation. Matches the exact vocabulary enforced by internal/profile's assetRoles set (profile.schema.json's games[].assets keys); distinct from media type/format.",
       "enum": [
         "grid",
-        "grid-portrait",
+        "portrait",
         "hero",
         "logo",
         "icon",
+        "cover",
+        "background",
         "banner",
-        "boxart",
+        "marquee",
+        "fanart",
         "screenshot",
+        "titlescreen",
+        "miximage",
+        "physicalmedia",
         "manual",
         "video",
-        "other"
+        "custom"
       ]
     },
     "AssetRef": {
@@ -63,7 +89,7 @@
     },
     "GameRef": {
       "$ref": "#/$defs/SafeId",
-      "description": "Canonical game identifier (directory slug under library/games/**)."
+      "description": "Canonical game identifier (directory slug under library/games/**). Used only by game.schema.json / retro-release.schema.json / playnite-mapping.schema.json / source.schema.json / catalog.schema.json, which describe a forward-looking canonical game registry not yet backed by any Go type in internal/model \u2014 see schemas/v1/README.md's status column. The already-implemented profile model (canonical-profile.schema.json / model.Profile) instead embeds identity per game entry via ProfileGameID + identities/retro, not a separate game record."
     },
     "PlatformClass": {
       "type": "string",
@@ -79,37 +105,39 @@
     },
     "RetentionOutcome": {
       "type": "string",
-      "description": "Result of applying retention policy precedence (asset > role > system > source > global) to a piece of data.",
+      "description": "Retention/promotion outcome. Matches internal/policy's validModes exactly and is used as PolicyFile.default and PolicyRule.mode (policy.schema.json). Precedence when multiple rules could match one item is asset > role > system > source > global (internal/policy.specificity), with PolicyFile.default as the global fallback.",
       "enum": ["managed", "tracked-external", "promote-on-approval", "quarantined"]
     },
     "ModAssignment": {
       "type": "object",
-      "description": "A single game's selected mod set within a profile. At most one entry per game within an enclosing array (enforced by tooling, not representable in pure JSON Schema).",
+      "description": "A single game's selected mod set (model.ProfileMod / model.DeckyModV1: {game, set}). The generated Decky v1 ABI (decky-profile-v1.schema.json) strictly enforces at most one entry per \"game\" value in its mods array (internal/decky.Validate); canonical profile mods (canonical-profile.schema.json) follow the same convention but internal/profile.Validate does not currently re-check it.",
       "additionalProperties": false,
       "required": ["game", "set"],
       "properties": {
         "game": {
           "type": "string",
-          "description": "Legacy/Decky-ABI game identifier this mod selection applies to (safe ID, matches profile-visible game key, not necessarily the canonical library game id)."
+          "minLength": 1,
+          "description": "Game identifier this mod selection applies to."
         },
         "set": {
           "type": "string",
+          "minLength": 1,
           "description": "Name of the mod set applied to the game. A complete set replaces prior selections for that game entirely (no partial/merge semantics)."
         }
       }
     },
     "Provenance": {
       "type": "object",
-      "description": "Where a piece of data came from and how it entered the tree.",
+      "description": "Where a piece of data came from and how it entered the tree. Not yet backed by a Go type; used by asset.schema.json.",
       "additionalProperties": false,
-      "required": ["origin", "imported_at"],
+      "required": ["origin", "importedAt"],
       "properties": {
         "origin": {
           "type": "string",
           "enum": ["scraped", "manual", "generated", "user-upload", "migrated"]
         },
-        "imported_at": { "$ref": "#/$defs/Timestamp" },
-        "imported_by": {
+        "importedAt": { "$ref": "#/$defs/Timestamp" },
+        "importedBy": {
           "type": "string",
           "description": "Sanitized actor label (adapter or tool name), never an account ID or personal identifier."
         }
@@ -117,14 +145,14 @@
     },
     "License": {
       "type": "object",
-      "description": "Explicit licensing statement. At least one of spdx_id or name must be present.",
+      "description": "Explicit licensing statement. At least one of spdxId or name must be present. Not yet backed by a Go type; used by asset.schema.json.",
       "additionalProperties": false,
       "anyOf": [
-        { "properties": { "spdx_id": { "type": "string" } }, "required": ["spdx_id"] },
+        { "properties": { "spdxId": { "type": "string" } }, "required": ["spdxId"] },
         { "properties": { "name": { "type": "string" } }, "required": ["name"] }
       ],
       "properties": {
-        "spdx_id": { "type": "string" },
+        "spdxId": { "type": "string" },
         "name": { "type": "string" },
         "url": { "type": "string", "format": "uri" },
         "notes": { "type": "string" }

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "default": "tracked-external",
+  "rules": [
+    {
+      "source": "canonical-catalog",
+      "mode": "managed"
+    },
+    {
+      "system": "n64",
+      "role": "manual",
+      "mode": "managed"
+    },
+    {
+      "system": "n64",
+      "role": "video",
+      "mode": "tracked-external"
+    }
+  ]
+}
