@@ -3,14 +3,17 @@ package dashboard
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/jrmoulckers/game-library/internal/config"
+	"github.com/jrmoulckers/game-library/internal/decky"
 	"github.com/jrmoulckers/game-library/internal/model"
 	"github.com/jrmoulckers/game-library/internal/organizer"
 	"github.com/jrmoulckers/game-library/internal/review"
@@ -323,14 +326,6 @@ func (h *handlers) reviewMediaDownload(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, "", review.Clock(), file)
 }
 
-func (h *handlers) catalogRootOrError(w http.ResponseWriter) (string, bool) {
-	if h.opts.CatalogRoot == "" {
-		writeJSONError(w, http.StatusBadRequest, "catalog_root_missing", "configure a catalog root before using this endpoint")
-		return "", false
-	}
-	return h.opts.CatalogRoot, true
-}
-
 func (h *handlers) loadProfileDraftOrError(w http.ResponseWriter, id string) (model.Profile, bool) {
 	draft, found, err := workspace.LoadProfileDraft(h.opts.Workspace, id)
 	if err != nil {
@@ -344,33 +339,111 @@ func (h *handlers) loadProfileDraftOrError(w http.ResponseWriter, id string) (mo
 	return draft.Profile, true
 }
 
-// profileDraftSummary is a read-only enumeration entry for a saved profile
-// draft: only its symbolic id/name/theme, never a filesystem path (issue
-// #5).
+// profileDraftSummary is a read-only enumeration entry for a profile:
+// only its symbolic id/name/theme, never a filesystem path (issue #5).
+//
+// Profiles come from two places. Drafts are editable and local to this
+// machine. Catalog profiles are the ones already live in the synced
+// GamingProfiles tree — including deck-default and steam-default — and are
+// listed read-only so the library can show what each device is actually
+// using without offering to rewrite it here.
 type profileDraftSummary struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Theme string `json:"theme,omitempty"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Theme       string `json:"theme,omitempty"`
+	Source      string `json:"source"`
+	ReadOnly    bool   `json:"readOnly,omitempty"`
+	Description string `json:"description,omitempty"`
+	Artwork     int    `json:"artwork"`
 }
 
-// reviewProfileDrafts lists every currently saved profile draft. This is a
-// read-only enumeration the dashboard UI needs (issue #5) that previously
-// had no endpoint at all.
+// reviewProfileDrafts lists every saved profile draft alongside the
+// profiles already present in a configured catalog root.
 func (h *handlers) reviewProfileDrafts(w http.ResponseWriter, r *http.Request) {
 	profiles, ok := h.loadAllProfileDrafts(w)
 	if !ok {
 		return
 	}
 	summaries := make([]profileDraftSummary, 0, len(profiles))
+	seen := make(map[string]bool, len(profiles))
 	for _, p := range profiles {
-		summaries = append(summaries, profileDraftSummary{ID: p.ID, Name: p.Name, Theme: p.Theme})
+		seen[p.ID] = true
+		summaries = append(summaries, profileDraftSummary{
+			ID: p.ID, Name: p.Name, Theme: p.Theme, Source: "draft",
+		})
+	}
+	for _, live := range h.catalogProfiles() {
+		// A draft of the same id is the one the owner is editing, so it
+		// wins the listing.
+		if seen[live.ID] {
+			continue
+		}
+		summaries = append(summaries, live)
 	}
 	writeJSON(w, http.StatusOK, summaries)
 }
 
-// reviewThemes lists the safe theme IDs currently present under the
-// configured catalog root's canonical library/themes layout (issue #5): a
-// read-only enumeration, never a raw path.
+// catalogProfiles reads the profiles present in every configured catalog
+// root. Failures are deliberately silent: an unreachable or malformed
+// catalog must not take out the profiles view, and a missing catalog is
+// normal on a machine that has not synced one.
+func (h *handlers) catalogProfiles() []profileDraftSummary {
+	cfg, found, err := workspace.LoadActiveConfig(h.opts.Workspace.Config)
+	if err != nil || !found {
+		return nil
+	}
+	var profiles []profileDraftSummary
+	for _, root := range cfg.Roots {
+		if root.Kind != "decky-catalog" {
+			continue
+		}
+		entries, err := os.ReadDir(filepath.Join(root.Path, "profiles"))
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
+				continue
+			}
+			profile, err := decky.LoadAndValidate(filepath.Join(root.Path, "profiles", entry.Name()))
+			if err != nil {
+				continue
+			}
+			profiles = append(profiles, profileDraftSummary{
+				ID:          profile.ID,
+				Name:        profile.Name,
+				Source:      "catalog",
+				ReadOnly:    true,
+				Description: profile.Description,
+				Artwork:     countCatalogArtwork(root.Path, profile),
+			})
+		}
+	}
+	sort.Slice(profiles, func(i, j int) bool { return profiles[i].ID < profiles[j].ID })
+	return profiles
+}
+
+// countCatalogArtwork counts the artwork files a live profile carries. A
+// profile with a null artwork set intentionally has none.
+func countCatalogArtwork(root string, profile model.DeckyProfileV1) int {
+	if profile.Artwork == nil || *profile.Artwork == "" {
+		return 0
+	}
+	dir := filepath.Join(root, "artwork", *profile.Artwork)
+	count := 0
+	_ = filepath.WalkDir(dir, func(_ string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		// The empty-profile marker is bookkeeping, not artwork.
+		if !entry.IsDir() && entry.Name() != ".deck-profile-empty" {
+			count++
+		}
+		return nil
+	})
+	return count
+}
+
 // rootValidationResult reports one candidate root's filesystem readiness
 // without ever echoing its path back to the client.
 type rootValidationResult struct {

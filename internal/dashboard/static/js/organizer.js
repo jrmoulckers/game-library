@@ -250,7 +250,10 @@ function openPreview(asset, title) {
 }
 
 async function chooseForProfile(asset, game, api, announceStatus, announceError) {
-  const summaries = await api.get("/api/review/profiles");
+  const all = await api.get("/api/review/profiles");
+  // Catalog profiles are already live on a device and are never rewritten
+  // from here, so only editable drafts can receive artwork.
+  const summaries = all.filter((profile) => profile.source !== "catalog");
   if (!summaries.length) {
     announceError("Create a profile for a device first, then choose artwork for it.");
     showView("profile-library");
@@ -353,6 +356,20 @@ async function renderProfiles(api) {
     return;
   }
   for (const profile of profiles) {
+    // A catalog profile is already live on a device; it is listed so the
+    // owner can see what that device uses, not edited from here.
+    if (profile.source === "catalog") {
+      grid.appendChild(el("article", { class: "profile-card" }, [
+        el("div", { class: "profile-mosaic" }, [0, 1, 2, 3].map(() => el("span", { class: "mosaic-placeholder" }))),
+        el("div", {}, [
+          el("h3", { text: profile.name }),
+          el("p", { text: `${profile.artwork} artwork ${profile.artwork === 1 ? "file" : "files"} · already on a device` }),
+          profile.description ? el("p", { class: "profile-note", text: profile.description }) : null,
+          chip("Live · read-only"),
+        ]),
+      ]));
+      continue;
+    }
     const view = await api.get(`/api/drafts/profiles/${encodeURIComponent(profile.id)}`);
     const games = view.draft?.profile?.games || [];
     const assets = games.flatMap((game) => Object.values(game.assets || {}));
@@ -388,6 +405,13 @@ async function createProfile(api, announceStatus, announceError) {
     const existing = await api.get(`/api/drafts/profiles/${encodeURIComponent(id)}`);
     if (existing.exists) {
       announceError(`A profile named "${name}" already exists.`);
+      return;
+    }
+    // Reusing a live profile's id would shadow it in this list and invite
+    // overwriting a device that already works.
+    const live = await api.get("/api/review/profiles");
+    if (live.some((profile) => profile.source === "catalog" && profile.id === id)) {
+      announceError(`"${name}" is already live on a device. Choose a different name.`);
       return;
     }
     await api.put(`/api/drafts/profiles/${encodeURIComponent(id)}`, {

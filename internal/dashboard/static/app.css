@@ -566,6 +566,11 @@ body {
   color: var(--graphite-600);
 }
 
+.profile-card p.profile-note {
+  margin-top: -0.5rem;
+  font-size: 0.85rem;
+}
+
 .source-card small {
   color: var(--graphite-500);
 }
