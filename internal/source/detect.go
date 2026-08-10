@@ -1,3 +1,6 @@
+// Package source detects candidate library roots on the local machine by
+// probing well-known launcher and emulator locations. Detection is read-only
+// and reports candidates for the user to confirm; it never configures a root.
 package source
 
 import (
@@ -158,7 +161,7 @@ func detectSteam(env Environment, userdata string, add func(string, string, stri
 
 func countItems(env Environment, root string) int {
 	count := 0
-	_ = env.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+	walkErr := env.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			if path == root {
 				return err
@@ -176,6 +179,9 @@ func countItems(env Environment, root string) int {
 		}
 		return nil
 	})
+	// Best-effort: an unwalkable root reports the count reached so far, which
+	// detection surfaces as a candidate the user can still confirm.
+	_ = walkErr
 	return count
 }
 

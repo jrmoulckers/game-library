@@ -59,7 +59,10 @@ func metadataPaths(roots []model.Root) []string {
 	for _, library := range uniqueSteamPaths(libraries) {
 		manifestDir := filepath.Join(library, "steamapps")
 		add(manifestDir)
-		matches, _ := filepath.Glob(filepath.Join(manifestDir, "appmanifest_*.acf"))
+		matches, globErr := filepath.Glob(filepath.Join(manifestDir, "appmanifest_*.acf"))
+		// Best-effort: an unreadable library contributes no manifests to the
+		// fingerprint, which is treated the same as a library with none.
+		_ = globErr
 		for _, match := range matches {
 			add(match)
 		}
@@ -74,7 +77,10 @@ func metadataPaths(roots []model.Root) []string {
 		case "esde-media":
 			gamelists := filepath.Join(filepath.Dir(filepath.Clean(root.Path)), "gamelists")
 			add(gamelists)
-			systems, _ := os.ReadDir(gamelists)
+			systems, readErr := os.ReadDir(gamelists)
+			// Best-effort: an unreadable gamelists directory contributes no
+			// per-system entries, the same as an empty one.
+			_ = readErr
 			for _, system := range systems {
 				if system.IsDir() && safeSystemKey(system.Name()) {
 					add(filepath.Join(gamelists, system.Name(), "gamelist.xml"))

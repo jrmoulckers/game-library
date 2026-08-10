@@ -1,3 +1,7 @@
+// Package metadata reads optional local metadata from installed game
+// launchers. Every provider is best-effort and read-only: a provider that is
+// missing, locked, or malformed yields a diagnostic rather than an error, so
+// one unavailable source never suppresses titles from another.
 package metadata
 
 import (
