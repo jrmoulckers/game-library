@@ -22,13 +22,6 @@ import (
 	"github.com/jrmoulckers/game-library/internal/workspace"
 )
 
-// adapterNames lists every frontend export adapter this repository
-// supports, in a fixed, deterministic order. It is the single source of
-// truth for both the adapter-status endpoint and destination-root
-// resolution: every other reference to "the list of adapters" in this
-// package must derive from it, not repeat it.
-var adapterNames = []string{"steam", "playnite", "decky", "esde", "romm"}
-
 // requireActiveConfig loads and validates the active configuration,
 // writing a sanitized error response and returning ok=false when it is
 // absent or unreadable. Every review endpoint needs a configured set of
@@ -206,20 +199,6 @@ func (h *handlers) detectSources(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// artifactRef converts an absolute artifact path (as returned by
-// review/workspace artifact-writing functions) into the workspace-relative
-// symbolic reference that is safe to return in an API response. It never
-// hands the caller anything containing the workspace root or any other
-// absolute filesystem detail (issue #1).
-func (h *handlers) artifactRef(w http.ResponseWriter, absPath string) (string, bool) {
-	ref, err := workspace.RelativeArtifactName(h.opts.Workspace, absPath)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to compute an artifact reference")
-		return "", false
-	}
-	return ref, true
-}
-
 func isPreviewableImage(mime string) bool {
 	return strings.HasPrefix(mime, "image/")
 }
@@ -327,19 +306,6 @@ func (h *handlers) reviewMediaDownload(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, "", review.Clock(), file)
 }
 
-func (h *handlers) loadProfileDraftOrError(w http.ResponseWriter, id string) (model.Profile, bool) {
-	draft, found, err := workspace.LoadProfileDraft(h.opts.Workspace, id)
-	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid_profile_id", err.Error())
-		return model.Profile{}, false
-	}
-	if !found {
-		writeJSONError(w, http.StatusNotFound, "profile_draft_not_found", "no profile draft matches that id")
-		return model.Profile{}, false
-	}
-	return draft.Profile, true
-}
-
 // profileDraftSummary is a read-only enumeration entry for a profile:
 // only its symbolic id/name/theme, never a filesystem path (issue #5).
 //
@@ -432,9 +398,11 @@ func countCatalogArtwork(root string, profile model.DeckyProfileV1) int {
 	}
 	dir := filepath.Join(root, "artwork", *profile.Artwork)
 	count := 0
-	_ = filepath.WalkDir(dir, func(_ string, entry fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(dir, func(_ string, entry fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			// An unreadable entry contributes nothing; a missing artwork
+			// directory simply means the profile carries no artwork.
+			return fs.SkipDir
 		}
 		// The empty-profile marker is bookkeeping, not artwork.
 		if !entry.IsDir() && entry.Name() != ".deck-profile-empty" {
@@ -442,6 +410,9 @@ func countCatalogArtwork(root string, profile model.DeckyProfileV1) int {
 		}
 		return nil
 	})
+	if walkErr != nil {
+		return 0
+	}
 	return count
 }
 
