@@ -36,16 +36,31 @@ func Validate(file model.PolicyFile) error {
 }
 
 func Resolve(file model.PolicyFile, observation model.Observation) string {
-	mode := file.Default
+	mode, _, _ := ResolveDetailed(file, observation)
+	return mode
+}
+
+// ResolveDetailed resolves the same policy mode as Resolve, and additionally
+// reports which rule won: matchedRule is -1 and matched is false when no
+// rule matched and file.Default was used, otherwise matchedRule is the
+// index into file.Rules of the most specific matching rule. This lets
+// callers (for example a review/preview surface) explain *why* an
+// observation resolved to a given mode without duplicating the
+// specificity-scoring logic.
+func ResolveDetailed(file model.PolicyFile, observation model.Observation) (mode string, matchedRule int, matched bool) {
+	mode = file.Default
 	best := -1
-	for _, rule := range file.Rules {
+	matchedRule = -1
+	for i, rule := range file.Rules {
 		score, matches := specificity(rule, observation)
 		if matches && score > best {
 			mode = rule.Mode
 			best = score
+			matchedRule = i
+			matched = true
 		}
 	}
-	return mode
+	return mode, matchedRule, matched
 }
 
 func specificity(rule model.PolicyRule, observation model.Observation) (int, bool) {
