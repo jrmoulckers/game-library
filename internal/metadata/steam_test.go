@@ -108,6 +108,7 @@ func TestSteamShortcutsAreStructuralAndCaseInsensitive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if titles[^uint32(0)] != "unsigned title" {
 		t.Fatalf("titles = %#v", titles)
 	}
@@ -115,6 +116,15 @@ func TestSteamShortcutsAreStructuralAndCaseInsensitive(t *testing.T) {
 	invalid := append([]byte{0x55, 0xff, 0xff, 0xff, 0xff}, data...)
 	if _, err := parseSteamShortcuts(invalid); err == nil {
 		t.Fatal("unstructured prefix should reject rather than be scanned")
+	}
+}
+
+func TestSteamAppInfoZeroTitlesProducesDiagnostic(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "appcache", "appinfo.vdf"), testAppInfoV29(map[uint32]string{}))
+	result := ResolveSteam(SteamLocations{InstallRoots: []string{root}})
+	if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "contained no readable names") {
+		t.Fatalf("diagnostics = %#v", result.Diagnostics)
 	}
 }
 
@@ -179,8 +189,6 @@ func indexedCommonNameKV(title string) []byte {
 	var out bytes.Buffer
 	out.WriteByte(0x00)
 	_ = binary.Write(&out, binary.LittleEndian, uint32(0))
-	out.WriteByte(0x00)
-	_ = binary.Write(&out, binary.LittleEndian, uint32(0))
 	out.WriteByte(0x01)
 	_ = binary.Write(&out, binary.LittleEndian, uint32(1))
 	out.WriteString(title)
@@ -193,8 +201,6 @@ func indexedCommonNameKV(title string) []byte {
 func inlineCommonNameKV(title string) []byte {
 	var out bytes.Buffer
 	out.Write([]byte{0x00})
-	out.WriteString("root\x00")
-	out.WriteByte(0x00)
 	out.WriteString("common\x00")
 	out.WriteByte(0x01)
 	out.WriteString("name\x00")
@@ -224,6 +230,7 @@ func testShortcuts(shortcuts []testShortcut) []byte {
 		out.WriteByte(0)
 		out.WriteByte(0x08)
 	}
+	out.WriteByte(0x08)
 	out.WriteByte(0x08)
 	return out.Bytes()
 }

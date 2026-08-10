@@ -57,14 +57,14 @@ func writeSyntheticPlayniteFixture(t *testing.T, filePath, guid, name, gameID, p
 	binary.LittleEndian.PutUint32(data[55:], ^uint32(0))
 	binary.LittleEndian.PutUint32(data[59:], 3)
 	data[101] = 1
-	binary.LittleEndian.PutUint32(data[102:], 5)
-	copy(data[106:], "games")
-	binary.LittleEndian.PutUint32(data[111:], 1)
+	binary.LittleEndian.PutUint32(data[102:], 4)
+	copy(data[106:], "Game")
+	binary.LittleEndian.PutUint32(data[110:], 1)
 
 	collection := data[playnitePageSize:]
 	setPageHeader(collection, 1, playniteCollectionPageType, 1)
 	position := 25
-	position = putLiteString32(collection, position, "games")
+	position = putLiteString32(collection, position, "Game")
 	binary.LittleEndian.PutUint64(collection[position:], 1)
 	position += 8
 	binary.LittleEndian.PutUint32(collection[position:], ^uint32(0))

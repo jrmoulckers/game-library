@@ -52,8 +52,11 @@ func ResolveSteam(locations SteamLocations) SteamResult {
 		if data, ok := readSteamOptional(path, steamMaxAppInfoFile, &result, "steam-appinfo"); ok {
 			titles, err := parseSteamAppInfo(data)
 			if err != nil {
-				addSteamDiagnostic(&result, "steam-appinfo", "invalid appinfo source")
+				addSteamDiagnostic(&result, "steam-appinfo", "Steam titles unavailable - appinfo.vdf could not be read safely.")
 				continue
+			}
+			if len(titles) == 0 {
+				addSteamDiagnostic(&result, "steam-appinfo", "Steam titles unavailable - appinfo.vdf contained no readable names.")
 			}
 			addSteamTitles(result.Titles, titles, "steam-appinfo")
 		}
@@ -124,7 +127,7 @@ func ResolveSteam(locations SteamLocations) SteamResult {
 			}
 			titles, err := parseSteamShortcuts(data)
 			if err != nil {
-				addSteamDiagnostic(&result, "steam-shortcut", "invalid shortcuts source")
+				addSteamDiagnostic(&result, "steam-shortcut", "Non-Steam shortcut titles unavailable - shortcuts.vdf could not be read safely.")
 				continue
 			}
 			addSteamTitles(result.Titles, titles, "steam-shortcut")
@@ -289,11 +292,11 @@ var errSteamFormat = errors.New("invalid steam source")
 
 func parseIndexedKV(data []byte, stringsTable []string) (steamKV, error) {
 	reader := &steamBinaryReader{data: data}
-	node, err := parseIndexedValue(reader, stringsTable, 0)
+	children, err := parseIndexedObject(reader, stringsTable, 0)
 	if err != nil || reader.pos != len(data) {
 		return steamKV{}, errSteamFormat
 	}
-	return node, nil
+	return steamKV{kind: 0x00, children: children}, nil
 }
 
 func indexedString(table []string, index uint32) (string, error) {
@@ -485,16 +488,21 @@ func parseSteamAppRecords(data []byte, table []string, indexed bool) (map[uint32
 
 func steamCommonName(root steamKV) (string, bool) {
 	for _, child := range root.children {
-		if child.kind != 0x00 || !strings.EqualFold(child.key, "common") {
+		if child.kind != 0x00 {
 			continue
 		}
-		for _, value := range child.children {
-			if value.kind == 0x01 && strings.EqualFold(value.key, "name") {
-				title := strings.TrimSpace(value.text)
-				if title != "" {
-					return title, true
+		if strings.EqualFold(child.key, "common") {
+			for _, value := range child.children {
+				if value.kind == 0x01 && strings.EqualFold(value.key, "name") {
+					title := strings.TrimSpace(value.text)
+					if title != "" {
+						return title, true
+					}
 				}
 			}
+		}
+		if title, ok := steamCommonName(child); ok {
+			return title, true
 		}
 	}
 	return "", false
@@ -504,11 +512,11 @@ func steamCommonName(root steamKV) (string, bool) {
 
 func parseInlineKV(data []byte) (steamKV, error) {
 	reader := &steamBinaryReader{data: data}
-	node, err := parseInlineValue(reader, 0)
+	children, err := parseInlineObject(reader, 0)
 	if err != nil || reader.pos != len(data) {
 		return steamKV{}, errSteamFormat
 	}
-	return node, nil
+	return steamKV{kind: 0x00, children: children}, nil
 }
 
 func parseInlineValue(r *steamBinaryReader, depth int) (steamKV, error) {
@@ -571,11 +579,21 @@ func parseInlineObject(r *steamBinaryReader, depth int) ([]steamKV, error) {
 
 func parseSteamShortcuts(data []byte) (map[uint32]string, error) {
 	root, err := parseInlineKV(data)
-	if err != nil || root.kind != 0x00 || !strings.EqualFold(root.key, "shortcuts") {
+	if err != nil || root.kind != 0x00 {
+		return nil, errSteamFormat
+	}
+	var shortcutEntries []steamKV
+	for _, value := range root.children {
+		if value.kind == 0x00 && strings.EqualFold(value.key, "shortcuts") {
+			shortcutEntries = value.children
+			break
+		}
+	}
+	if shortcutEntries == nil {
 		return nil, errSteamFormat
 	}
 	titles := make(map[uint32]string)
-	for _, shortcut := range root.children {
+	for _, shortcut := range shortcutEntries {
 		if shortcut.kind != 0x00 {
 			continue
 		}

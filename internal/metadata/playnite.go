@@ -322,7 +322,7 @@ func (r *playniteReader) readHeader() (playniteHeader, error) {
 		if !address.valid(logicalSize) {
 			return playniteHeader{}, errPlayniteCorrupt
 		}
-		if strings.EqualFold(name, "games") {
+		if strings.EqualFold(name, "game") || strings.EqualFold(name, "games") {
 			if !collectionPage.empty() {
 				return playniteHeader{}, errPlayniteCorrupt
 			}

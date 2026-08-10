@@ -29,6 +29,13 @@ func ResolveAll(roots []model.Root) Catalog {
 			}
 			continue
 		}
+		if len(playnite.Games) == 0 {
+			builder.AddDiagnostic(Diagnostic{
+				Source: "playnite", Status: "unavailable",
+				Message: "Playnite titles unavailable - the local games collection contained no readable games.",
+			})
+			continue
+		}
 		builder.AddSource(SourceState{
 			ID: "playnite-metadata", Name: "Playnite game titles",
 			Status: "ready", ItemCount: len(playnite.Games),

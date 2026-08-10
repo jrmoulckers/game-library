@@ -29,7 +29,7 @@ func (r *playniteReader) readCollections(address pageAddress) (map[string]collec
 	}
 	position := playniteBaseHeaderSize
 	name, next, ok := readLiteString32(page.bytes, position)
-	if !ok || !strings.EqualFold(name, "games") {
+	if !ok || (!strings.EqualFold(name, "game") && !strings.EqualFold(name, "games")) {
 		return nil, errPlayniteCorrupt
 	}
 	position = next
