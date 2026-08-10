@@ -84,24 +84,35 @@ analysis, all of which stay in the Go packages under `internal/`. With
 JavaScript disabled or blocked, each section explains the equivalent `gamelib`
 CLI command instead of rendering a blank page.
 
-Opening `http://<listen-address>/` presents:
+Opening `http://<listen-address>/` presents the artwork organizer:
 
-- **First-run setup** — edit the active configuration's roots (id/kind/path/
-  system), validate them without writing anything, set the global policy
-  default, and save the active configuration with base-digest conflict
-  recovery. The page states explicitly which local file is written and that
-  nothing outside it (canonical catalog, bundles, generated Decky output, the
-  Playnite database, or a homelab/live frontend) is ever touched.
-- **Overview** — root/file/byte/media totals, scan freshness, validation
-  warnings, the duplicate summary, adapter readiness, and a small artwork
-  sample, with a manual refresh control (the review snapshot is cached for
-  the life of the process; it never rescans the configured roots on every
-  request).
-- **Artwork browser** — a server-paginated, filterable table of every
-  observed artwork/media file (source, system, identity, role, dimensions,
-  policy outcome, theme, validation state), with real HTML pagination — no
-  infinite/virtual scrolling — and a labeled fallback for any thumbnail that
-  fails to decode.
+- **Library** — platform cards with artwork mosaics, game counts, coverage, and
+  missing-art counts. This is the landing view once a source is configured.
+- **Platform detail** — a searchable, sortable cover grid with straightforward
+  artwork-coverage filters.
+- **Game detail** — identities, every available artwork role, missing-role and
+  fallback explanations, profile use, exact-copy sharing, media facts, large
+  previews, and direct selection of an asset for a saved profile.
+- **Profiles** — visual profile cards and plain-language Decky fallback
+  semantics. Detailed draft editing remains available in Advanced.
+- **Sources** — conventional Steam, Playnite/ExtraMetadata, GamingProfiles, and
+  RetroDECK/ES-DE locations are detected locally on Windows and Linux. The
+  owner confirms found folders once; manual configuration remains available.
+  Organizer rescans report per-source progress and publish partial in-memory
+  results as each source completes.
+- **Advanced** — the existing setup, overview, artwork table, identity queue,
+  duplicates, policy, profile draft editor, plans and Gate A/B/C reviews,
+  adapter readiness, and recovery/integrity history remain intact in one
+  collapsed area.
+
+Advanced includes:
+
+- **First-run/manual setup** — edit root id/kind/path/system values, validate
+  them without writing, set the global policy default, and save with
+  base-digest conflict recovery.
+- **Overview and artwork browser** — root/file/media totals, validation
+  warnings, duplicate and adapter summaries, plus the complete paginated,
+  filterable observation table.
 - **Identity queue** — deterministic (high-confidence) identity proposals
   shown separately from lower-confidence proposals and unmapped items, with
   their evidence; nothing is ever auto-merged, and creating a Gate A review

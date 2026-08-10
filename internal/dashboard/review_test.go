@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jrmoulckers/game-library/internal/manifest"
 	"github.com/jrmoulckers/game-library/internal/model"
+	"github.com/jrmoulckers/game-library/internal/organizer"
 	"github.com/jrmoulckers/game-library/internal/review"
 	"github.com/jrmoulckers/game-library/internal/workspace"
 )
@@ -57,12 +59,51 @@ func TestReviewOverviewScansConfiguredRoot(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
+
 	var overview review.Overview
 	if err := json.Unmarshal(rec.Body.Bytes(), &overview); err != nil {
 		t.Fatal(err)
 	}
+
 	if len(overview.Roots) != 1 || overview.Roots[0].FileCount != 1 {
 		t.Fatalf("unexpected overview: %+v", overview)
+	}
+}
+
+func TestOrganizerCatalogAndGameUseGroupedReadModel(t *testing.T) {
+	handler, _, paths := newTestHandlerWithOptions(t, Options{})
+	cfg, _ := reviewSourceConfig(t)
+	writeActiveConfigForTest(t, paths, cfg)
+
+	var catalog organizer.Catalog
+	var rec *httptest.ResponseRecorder
+	deadline := time.Now().Add(5 * time.Second)
+	for len(catalog.Games) == 0 && time.Now().Before(deadline) {
+		rec = fetch(t, handler, "/api/organizer")
+		if rec.Code != 200 {
+			t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &catalog); err != nil {
+			t.Fatal(err)
+		}
+		if len(catalog.Games) == 0 {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	if len(catalog.Platforms) != 1 || len(catalog.Games) != 1 || catalog.Games[0].ID != "steam:123" {
+		t.Fatalf("unexpected catalog: %+v", catalog)
+	}
+
+	rec = fetch(t, handler, "/api/organizer/games/steam:123")
+	if rec.Code != 200 {
+		t.Fatalf("game status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var game organizer.Game
+	if err := json.Unmarshal(rec.Body.Bytes(), &game); err != nil {
+		t.Fatal(err)
+	}
+	if game.Title != "Steam app 123" || len(game.Assets) != 1 {
+		t.Fatalf("unexpected game: %+v", game)
 	}
 }
 

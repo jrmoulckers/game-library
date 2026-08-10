@@ -22,7 +22,7 @@ func TestIndexHasCoreLandmarksAndSkipLink(t *testing.T) {
 	checks := []string{
 		`class="skip-link" href="#main-content"`,
 		"<header",
-		`<nav class="stage-rail" aria-label="Dashboard stages">`,
+		`<nav class="stage-rail" aria-label="Organizer">`,
 		`<main id="main-content"`,
 		"<footer",
 		`id="status-region"`,
@@ -43,6 +43,7 @@ func TestIndexHasCoreLandmarksAndSkipLink(t *testing.T) {
 // requires, keyed by its section id. TestIndexHasEverySectionWithHeadingAndCaption
 // walks this list so a future removal of a required stage fails loudly.
 var requiredSections = []string{
+	"library", "platform-detail", "game-detail", "profile-library", "sources",
 	"setup", "overview", "artwork", "identity", "duplicates",
 	"policy", "profiles", "plans", "adapters", "recovery",
 }
@@ -125,7 +126,7 @@ func TestStaticAssetsServeSelfOriginScriptAndStyle(t *testing.T) {
 	jsFilesToCheck := []string{
 		"main.js", "api.js", "dom.js", "status.js", "setup.js", "overview.js",
 		"artwork.js", "identity.js", "duplicates.js", "policy.js", "profiles.js",
-		"plans.js", "adapters.js", "recovery.js",
+		"plans.js", "adapters.js", "recovery.js", "organizer.js",
 	}
 	for _, name := range jsFilesToCheck {
 		rec := fetch(t, handler, "/static/js/"+name)
@@ -166,8 +167,8 @@ func TestStaticJSRejectsUnknownName(t *testing.T) {
 // to be visible in the rendered shell, expressed as substrings so wording
 // tweaks that keep the meaning intact do not need to touch this test.
 var requiredCopyBoundaries = []string{
-	"local-only",
-	"never touch",
+	"Read-only",
+	"no changes are made to your libraries",
 	"draft",
 	"plan-only",
 	"Apply is unavailable",

@@ -96,6 +96,9 @@ func InferRole(rootKind, relativePath string) string {
 	case "videotrailer", "videomicrotrailer":
 		return "video"
 	}
+	if rootKind == "playnite-library" && isImageExtension(ext) && uuidName.MatchString(base) {
+		return "cover"
+	}
 	if isImageExtension(ext) &&
 		(rootKind == "steam-grid" || rootKind == "decky-catalog" || strings.Contains(normalized, "/grid/")) {
 		match := steamName.FindStringSubmatch(base)
@@ -175,6 +178,9 @@ func InferIdentityHint(rootKind, relativePath, system string) string {
 		}
 	}
 	parts := strings.Split(normalized, "/")
+	if rootKind == "playnite-library" && uuidName.MatchString(base) {
+		return "playnite:" + strings.ToLower(base)
+	}
 	for _, part := range parts {
 		if uuidName.MatchString(part) {
 			return "playnite:" + strings.ToLower(part)

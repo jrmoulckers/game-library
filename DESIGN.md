@@ -4,17 +4,19 @@
 
 ## Direction
 
-The dashboard is an artwork-led library workbench, not a storefront. Neutral
-graphite and paper-like surfaces keep evidence, state, and operator decisions
-legible; artwork is the primary source of color. Familiar controls and dense
-tables support repeat work without a gamer-neon aesthetic or decorative chrome.
+The dashboard follows the familiar organizer canon established by Playnite,
+LaunchBox, and Jellyfin: a compact dark navigation shell opens onto a bright,
+artwork-dominant collection canvas. Platform mosaics, cover grids, and
+role-specific previews make the library recognizable before any metadata is
+read. Advanced evidence tools retain their precision but recede behind one
+disclosure.
 
 ## Color
 
-- `#14171a` anchors the header and primary ink.
-- `#f4f4f2`, `#ffffff`, and `#ebebe8` separate the workspace, content, and
-  secondary tools.
-- `#0b5fd6` is reserved for keyboard focus and active browser affordances.
+- `#15171c` anchors the persistent navigation shell.
+- `#f3f4f6` and `#ffffff` separate the collection canvas from artwork objects.
+- `#476bd8` identifies primary actions; `#0b5fd6` remains the keyboard focus
+  color.
 - Green, amber, and red are paired with explicit text for success, warning, and
   blocking states; color never carries state alone.
 - Artwork thumbnails retain their source color without tinting the surrounding
@@ -23,25 +25,30 @@ tables support repeat work without a gamer-neon aesthetic or decorative chrome.
 ## Typography
 
 Use the platform system sans stack for all interface copy and controls.
-Monospace is limited to paths, hashes, and technical identifiers. The hierarchy
-is deliberately compact: one strong page title, clear section headings, and
-plain labels suited to desktop and Steam Deck browser density.
+Monospace is limited to paths, hashes, and technical identifiers inside
+Advanced. Large, tightly tracked route headings contrast with compact game
+labels and readable metadata chips.
 
 ## Layout
 
-Desktop uses a sticky stage rail and one broad work column. At narrow widths or
-Steam Deck-like height, the rail becomes a wrapped stage switcher and all
-content stacks into a single column. Data tables retain native semantics inside
-labeled keyboard-scrollable regions. Forms reflow without changing reading or
-focus order.
+Desktop uses a sticky sidebar and broad collection canvas. Library cards hold
+four-image mosaics, platform routes use responsive cover grids, and game routes
+pair large true-ratio artwork with a facts rail. At Steam Deck-like sizes the
+sidebar becomes a four-destination strip, grids reduce cleanly, and game assets
+stack without changing reading or focus order.
 
 ## Components and States
 
-- Sections use thin borders and restrained corner radii rather than nested
-  cards or decorative shadows.
+- Platform cards, game covers, profile previews, and source rows are the only
+  raised objects; artwork is never buried in nested cards.
 - Buttons and controls share a 44px primary target floor, high-contrast borders,
   and a visible three-pixel focus ring.
-- Every table has a caption, labeled headers, and an explicit empty row.
+- Cover and artwork previews retain meaningful alternative text, labeled
+  broken-preview states, and a keyboard-operable native dialog.
+- Metadata facts are compact text chips for dimensions, aspect, type, size,
+  source, copy count, and profile use.
+- Missing roles are explicit text, never empty placeholders or color alone.
+- Every Advanced table keeps its caption, labeled headers, and empty row.
 - Long or optional detail uses native `details`/`summary`.
 - Loading, success, conflict, empty, disabled, and error states remain visible
   in persistent status regions rather than transient toast-only feedback.
@@ -49,9 +56,9 @@ focus order.
 
 ## Motion
 
-There is no decorative motion. Navigation, table updates, and disclosures use
-native browser behavior. Reduced-motion preferences suppress any incidental
-transition or animation introduced by browser/platform defaults.
+Cover and platform objects use one short lift response to reinforce
+clickability. Navigation, dialogs, scan updates, and disclosures otherwise use
+native browser behavior. Reduced-motion preferences remove the lift.
 
 ## Accessibility
 

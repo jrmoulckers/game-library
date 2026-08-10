@@ -16,6 +16,7 @@ import * as profiles from "./profiles.js";
 import * as plans from "./plans.js";
 import * as adapters from "./adapters.js";
 import * as recovery from "./recovery.js";
+import * as organizer from "./organizer.js";
 
 const sections = [
   ["setup", setup],
@@ -57,6 +58,12 @@ async function main() {
   } catch (err) {
     announceError(`Failed to reach the dashboard server: ${err.message}. Confirm "gamelib serve" is still running.`);
     return;
+  }
+
+  try {
+    await organizer.init({ api, announceStatus: announceStatusSafe, announceError });
+  } catch (err) {
+    announceError(`Failed to initialize the artwork organizer: ${err.message}`);
   }
 
   for (const [name, module] of sections) {
