@@ -9,12 +9,11 @@ of these by default.
 
 - **Read-only by default.** Any tool that can write to the tree must be run in an
   explicit write mode; the default invocation only reads and reports.
-- **Symbolic roots, relative paths.** Keeping device paths, drive letters, home
-  directories, and account identifiers out of committed and shared artifacts is
-  [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/security-and-privacy.md#secret-lifecycle).
-  Repo-specific: every path recorded in any state/migration document uses a
-  symbolic root token (`${LIBRARY}`, `${INBOX}`, `${STAGING}`, ...) resolved by
-  local, untracked configuration. See `common.defs.schema.json`'s `SymbolicPath`.
+- **Symbolic roots, relative paths.** Every path recorded in any state/migration
+  document uses a symbolic root token (`${LIBRARY}`, `${INBOX}`, `${STAGING}`,
+  ...) resolved by local, untracked configuration, so device paths, drive
+  letters, home directories, and account identifiers never reach a committed or
+  shared artifact. See `common.defs.schema.json`'s `SymbolicPath`.
 - **Sanitized reports.** Redacting sensitive payloads before evidence leaves the
   producing boundary is
   [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/operations/observability.md#redacted-observable-evidence).

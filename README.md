@@ -183,7 +183,8 @@ The IDs that bear most directly on this repository:
 | [`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts) | [`schemas/v1/`](schemas/v1/README.md) is the versioned published contract |
 | [`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/architecture/boundaries-and-contracts.md#durable-decisions) | [`docs/architecture/decisions/`](docs/architecture/decisions/) |
 | [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/platforms/integration-boundaries.md#thin-typed-adapters) | [`docs/architecture/adapters.md`](docs/architecture/adapters.md) |
-| [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/security-and-privacy.md#secret-lifecycle) | symbolic roots, sanitized reports, and the CI residue check |
+| [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/security-and-privacy.md#secret-lifecycle) | `source.json`'s `endpoint_ref` is a sanitized pointer (doc anchor, env var name), never a literal credential |
+| [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/operations/observability.md#redacted-observable-evidence) | `sanitized` inventory reports, safe to attach to a bug report |
 | [`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/testing.md#distinct-static-signals) | the independent CI signals below |
 | [`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/testing.md#positive-and-negative-polarity) | paired accept/reject fixtures in `internal/schema` and the validator tests |
 | [`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/testing.md#executable-procedures) | the documented no-residue rule is executed by CI, not asserted in prose |
