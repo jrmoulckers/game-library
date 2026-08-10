@@ -178,8 +178,17 @@ func InferIdentityHint(rootKind, relativePath, system string) string {
 		}
 	}
 	parts := strings.Split(normalized, "/")
-	if rootKind == "playnite-library" && uuidName.MatchString(base) {
-		return "playnite:" + strings.ToLower(base)
+	// Playnite stores assets as <gameGuid>/<assetGuid>.<ext>, so the game is
+	// the directory. Using the file stem invents one bogus game per asset.
+	if rootKind == "playnite-library" {
+		for i := len(parts) - 2; i >= 0; i-- {
+			if uuidName.MatchString(parts[i]) {
+				return "playnite:" + strings.ToLower(parts[i])
+			}
+		}
+		if len(parts) == 1 && uuidName.MatchString(base) {
+			return "playnite:" + strings.ToLower(base)
+		}
 	}
 	for _, part := range parts {
 		if uuidName.MatchString(part) {
