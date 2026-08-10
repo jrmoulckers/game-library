@@ -15,6 +15,13 @@ import (
 	_ "image/gif"
 	_ "image/png"
 
+	// Real libraries contain WebP hero art and ICO covers, neither of
+	// which the standard library can decode. Without these the thumbnail
+	// path silently fell back to serving the original bytes — including
+	// individual WebP assets over 40MB.
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/webp"
+
 	"github.com/jrmoulckers/game-library/internal/review"
 )
 
@@ -97,6 +104,18 @@ const thumbQuality = 78
 // working set of a large library resident without unbounded growth.
 const thumbCacheEntries = 4096
 
+// maxThumbSourceBytes bounds how much of a source asset is read while
+// decoding. Real artwork runs to tens of megabytes, so the ceiling is
+// generous, but it keeps a malformed or hostile file from being read
+// without limit.
+const maxThumbSourceBytes = 256 << 20
+
+// maxThumbSourcePixels rejects images whose declared dimensions would
+// require an unreasonable decode buffer. A decompression bomb is cheap to
+// store and expensive to decode, so the size is checked from the header
+// before the pixels are read.
+const maxThumbSourcePixels = 80 << 20
+
 // thumbnailCache memoises generated thumbnails keyed by the content hash
 // of the source asset. Because the key is a content hash, an entry can
 // never go stale: different bytes produce a different key.
@@ -143,9 +162,23 @@ func (c *thumbnailCache) put(key string, data []byte) {
 // which the standard library does not support) so the caller can fall
 // back to serving the original bytes rather than failing the request.
 func makeThumbnail(source []byte) ([]byte, bool) {
+	if cfg, _, err := image.DecodeConfig(bytes.NewReader(source)); err == nil {
+		if cfg.Width <= 0 || cfg.Height <= 0 {
+			return nil, false
+		}
+		if int64(cfg.Width)*int64(cfg.Height) > maxThumbSourcePixels {
+			return nil, false
+		}
+	}
 	src, _, err := image.Decode(bytes.NewReader(source))
 	if err != nil {
-		return nil, false
+		// Extended (animated or alpha) WebP is not handled by the
+		// generic decoder; retry via the single-frame path.
+		decoded, ok := decodeWebP(source)
+		if !ok {
+			return nil, false
+		}
+		src = decoded
 	}
 	bounds := src.Bounds()
 	srcW, srcH := bounds.Dx(), bounds.Dy()
