@@ -125,6 +125,8 @@ func ResolveESDE(roots []model.Root, fileSystem ESDEFileSystem) Catalog {
 		if root.Kind != "esde-media" {
 			continue
 		}
+		// This sibling path convention is covered by synthetic fixtures but is
+		// still pending live verification on a RetroDECK device.
 		gamelists := filepath.Join(filepath.Dir(filepath.Clean(root.Path)), "gamelists")
 		key := filepath.Clean(gamelists)
 		if _, exists := seenDirectories[key]; exists {

@@ -50,6 +50,8 @@ the source contract or writing back:
   unencrypted LiteDB v4 games collection opened strictly read-only. The reader
   never creates a log, upgrades, compacts, rebuilds, or replays recovery state.
 - ES-DE names come from local `gamelists/<system>/gamelist.xml` files.
+  The standard and RetroDECK path conventions are covered synthetically and
+  remain pending live verification on a RetroDECK device.
 
 Malformed, busy, unsupported, or changing metadata leaves a labeled identity
 placeholder instead of failing inventory. Titles never create identity edges;
