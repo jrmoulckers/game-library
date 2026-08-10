@@ -167,16 +167,6 @@ func TestGetConfigIsSideEffectFree(t *testing.T) {
 	}
 }
 
-func examplePolicyFile() model.PolicyFile {
-	return model.PolicyFile{
-		Version: model.SchemaVersion,
-		Default: "tracked-external",
-		Rules: []model.PolicyRule{
-			{Source: "canonical-catalog", Mode: "managed"},
-		},
-	}
-}
-
 func exampleProfile(id string) model.Profile {
 	return model.Profile{
 		Version: model.SchemaVersion,
