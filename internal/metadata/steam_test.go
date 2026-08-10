@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -70,9 +71,16 @@ func TestSteamAppInfoRejectsUnknownTagsAndTruncation(t *testing.T) {
 	if _, err := parseSteamAppInfo(append(append([]byte(nil), valid...), 0x99)); err == nil {
 		t.Fatal("trailing bytes should reject the appinfo source")
 	}
+	// appinfo.vdf is a live cache that legitimately contains records this
+	// reader does not model. Such a record is skipped rather than guessed at,
+	// and it must never discard the rest of the file.
 	unknown := testAppInfoV28WithKV(31, []byte{0x03, 0, 0, 0, 0})
-	if _, err := parseSteamAppInfo(unknown); err == nil {
-		t.Fatal("unknown binary tag should reject the appinfo source")
+	titles, err := parseSteamAppInfo(unknown)
+	if err != nil {
+		t.Fatalf("an unmodelled record should be skipped, not fatal: %v", err)
+	}
+	if len(titles) != 0 {
+		t.Fatalf("titles = %#v, an unparsed record must not be guessed at", titles)
 	}
 	truncated := testAppInfoV28(map[uint32]string{31: "safe title"})
 	truncated = truncated[:len(truncated)-1]
@@ -86,8 +94,29 @@ func TestSteamAppInfoRejectsUnknownTagsAndTruncation(t *testing.T) {
 	}
 	badIndex := testAppInfoV29(map[uint32]string{31: "synthetic title"})
 	binary.LittleEndian.PutUint32(badIndex[90:], 99)
-	if _, err := parseSteamAppInfo(badIndex); err == nil {
-		t.Fatal("out-of-range v29 string table index should reject")
+	corrupt, err := parseSteamAppInfo(badIndex)
+	if err != nil {
+		t.Fatalf("a corrupt record should be skipped, not fatal: %v", err)
+	}
+	if len(corrupt) != 0 {
+		t.Fatalf("titles = %#v, an out-of-range string index must not resolve a title", corrupt)
+	}
+}
+
+// A single unreadable record must not cost the whole library its titles.
+// appinfo.vdf is a live cache, so an unmodelled record is expected eventually.
+func TestSteamAppInfoSkipsOnlyTheUnreadableRecord(t *testing.T) {
+	good := indexedCommonNameKV("resolved title")
+	bad := []byte{0x03, 0, 0, 0, 0, 0x08}
+	titles, err := parseSteamAppInfo(testAppInfoV29Raw(map[uint32][]byte{11: bad, 12: good}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if titles[12] != "resolved title" {
+		t.Fatalf("titles = %#v, a neighbouring bad record discarded a good one", titles)
+	}
+	if _, ok := titles[11]; ok {
+		t.Fatalf("titles = %#v, the unreadable record must not be invented", titles)
 	}
 }
 
@@ -155,6 +184,34 @@ func testAppInfoV29(titles map[uint32]string) []byte {
 	binary.LittleEndian.PutUint32(out[4:], 1)
 	binary.LittleEndian.PutUint64(out[8:], offset)
 	out = append(out, records.Bytes()...)
+	return append(out, tableSection.Bytes()...)
+}
+
+// testAppInfoV29Raw builds a v29 file from caller-supplied record bodies so
+// tests can reproduce byte shapes observed in real appinfo.vdf files.
+func testAppInfoV29Raw(records map[uint32][]byte) []byte {
+	table := []string{"common", "name"}
+	var body bytes.Buffer
+	ids := make([]uint32, 0, len(records))
+	for id := range records {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	for _, id := range ids {
+		payload := append(make([]byte, 60), records[id]...)
+		_ = binary.Write(&body, binary.LittleEndian, id)
+		_ = binary.Write(&body, binary.LittleEndian, uint32(len(payload)))
+		body.Write(payload)
+	}
+	_ = binary.Write(&body, binary.LittleEndian, uint32(0))
+	var tableSection bytes.Buffer
+	_ = binary.Write(&tableSection, binary.LittleEndian, uint32(len(table)))
+	tableSection.WriteString(strings.Join(table, "\x00") + "\x00")
+	out := make([]byte, 16)
+	binary.LittleEndian.PutUint32(out, 0x07564429)
+	binary.LittleEndian.PutUint32(out[4:], 1)
+	binary.LittleEndian.PutUint64(out[8:], uint64(16+body.Len()))
+	out = append(out, body.Bytes()...)
 	return append(out, tableSection.Bytes()...)
 }
 

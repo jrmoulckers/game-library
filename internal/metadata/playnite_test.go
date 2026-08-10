@@ -49,6 +49,13 @@ func TestReadPlayniteSyntheticV7Fixture(t *testing.T) {
 
 func writeSyntheticPlayniteFixture(t *testing.T, filePath, guid, name, gameID, pluginID string) {
 	t.Helper()
+	writeSyntheticPlayniteFixtureNamed(t, filePath, "Game", guid, name, gameID, pluginID)
+}
+
+// collectionName is explicit because Playnite names its games collection "Game"
+// (singular); assuming "games" silently resolved nothing against real databases.
+func writeSyntheticPlayniteFixtureNamed(t *testing.T, filePath, collectionName, guid, name, gameID, pluginID string) {
+	t.Helper()
 	data := make([]byte, playnitePageSize*4)
 	setPageHeader(data, 0, playniteHeaderPageType, 0)
 	copy(data[25:], playniteHeaderSignature)
@@ -57,14 +64,14 @@ func writeSyntheticPlayniteFixture(t *testing.T, filePath, guid, name, gameID, p
 	binary.LittleEndian.PutUint32(data[55:], ^uint32(0))
 	binary.LittleEndian.PutUint32(data[59:], 3)
 	data[101] = 1
-	binary.LittleEndian.PutUint32(data[102:], 4)
-	copy(data[106:], "Game")
-	binary.LittleEndian.PutUint32(data[110:], 1)
+	binary.LittleEndian.PutUint32(data[102:], uint32(len(collectionName)))
+	copy(data[106:], collectionName)
+	binary.LittleEndian.PutUint32(data[106+len(collectionName):], 1)
 
 	collection := data[playnitePageSize:]
 	setPageHeader(collection, 1, playniteCollectionPageType, 1)
 	position := 25
-	position = putLiteString32(collection, position, "Game")
+	position = putLiteString32(collection, position, collectionName)
 	binary.LittleEndian.PutUint64(collection[position:], 1)
 	position += 8
 	binary.LittleEndian.PutUint32(collection[position:], ^uint32(0))

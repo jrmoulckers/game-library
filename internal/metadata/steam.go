@@ -476,7 +476,14 @@ func parseSteamAppRecords(data []byte, table []string, indexed bool) (map[uint32
 			break
 		}
 		if !parsed {
-			return nil, errSteamFormat
+			// appinfo.vdf is a live cache that can contain records this
+			// reader does not model. Skip the record rather than guessing at
+			// it, but never let one record discard the rest of the library.
+			skip := int(size)
+			if skip < 60 || skip > reader.remaining() {
+				return nil, errSteamFormat
+			}
+			reader.pos += skip
 		}
 		recordCount++
 	}

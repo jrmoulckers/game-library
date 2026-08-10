@@ -49,9 +49,29 @@ the source contract or writing back:
 - Playnite names and exact storefront identity come from a stable,
   unencrypted LiteDB v4 games collection opened strictly read-only. The reader
   never creates a log, upgrades, compacts, rebuilds, or replays recovery state.
+  Playnite names the collection `Game` (singular); `games` is also accepted for
+  older databases.
 - ES-DE names come from local `gamelists/<system>/gamelist.xml` files.
   The standard and RetroDECK path conventions are covered synthetically and
   remain pending live verification on a RetroDECK device.
+
+These readers are deliberately resilient in one specific way that synthetic
+fixtures easily miss: `appinfo.vdf` is a live cache that may contain records
+this reader does not model. Such a record is skipped rather than guessed at,
+and never discards the records around it. Resilience never extends to
+inventing a value: parsing within a record stays strict, and a corrupt or
+out-of-range reference yields no title at all.
+
+Synthetic fixtures cannot prove these readers work, because a fixture can be
+shaped to match a broken parser. `internal/metadata` therefore carries a live
+acceptance test that runs the real readers against real local files. It is
+skipped unless pointed at them, and reports only counts:
+
+```
+GAMELIB_LIVE_STEAM_GRID=<steam>/userdata/<account>/config/grid
+GAMELIB_LIVE_PLAYNITE=<playnite>/library/files
+go test ./internal/metadata -run TestLiveSourcesResolveRealTitles -v
+```
 
 Malformed, busy, unsupported, or changing metadata leaves a labeled identity
 placeholder instead of failing inventory. Titles never create identity edges;
