@@ -134,7 +134,7 @@ func ReadPlaynite(path string) PlayniteResult {
 	if !ok {
 		return playniteFailure(playniteStatusUnsupported, "The Playnite games collection is unavailable.", errPlayniteUnsupported)
 	}
-	games, err := reader.readGames(gamesCollection)
+	games, skipped, err := reader.readGames(gamesCollection)
 	if err != nil {
 		return playniteFailure(playniteStatusForError(err), playniteMessageForError(err), err)
 	}
@@ -151,7 +151,16 @@ func ReadPlaynite(path string) PlayniteResult {
 		afterHeader.logicalSize != header.logicalSize {
 		return playniteFailure(playniteStatusUnstable, "Playnite library changed while it was read.", errPlayniteUnstable)
 	}
-	return PlayniteResult{Games: games, Status: playniteStatusOK}
+	result := PlayniteResult{Games: games, Status: playniteStatusOK}
+	if skipped > 0 {
+		diagnostic := Diagnostic{
+			Source: "playnite", Status: "warning",
+			Message: fmt.Sprintf("Playnite titles loaded with %d unreadable game records skipped.", skipped),
+		}
+		result.Diagnostic = diagnostic
+		result.Diagnostics = []Diagnostic{diagnostic}
+	}
+	return result
 }
 
 func playniteFailure(status, message string, cause error) PlayniteResult {

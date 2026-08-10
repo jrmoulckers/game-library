@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -50,10 +51,14 @@ func ResolveSteam(locations SteamLocations) SteamResult {
 	for _, root := range roots {
 		path := filepath.Join(root, "appcache", "appinfo.vdf")
 		if data, ok := readSteamOptional(path, steamMaxAppInfoFile, &result, "steam-appinfo"); ok {
-			titles, err := parseSteamAppInfo(data)
+			titles, skipped, err := parseSteamAppInfoDetailed(data)
 			if err != nil {
 				addSteamDiagnostic(&result, "steam-appinfo", "Steam titles unavailable - appinfo.vdf could not be read safely.")
 				continue
+			}
+			if skipped > 0 {
+				addSteamDiagnostic(&result, "steam-appinfo",
+					fmt.Sprintf("Steam titles loaded with %d unreadable app records skipped.", skipped))
 			}
 			if len(titles) == 0 {
 				addSteamDiagnostic(&result, "steam-appinfo", "Steam titles unavailable - appinfo.vdf contained no readable names.")
@@ -125,10 +130,14 @@ func ResolveSteam(locations SteamLocations) SteamResult {
 			if !ok {
 				continue
 			}
-			titles, err := parseSteamShortcuts(data)
+			titles, skipped, err := parseSteamShortcutsDetailed(data)
 			if err != nil {
 				addSteamDiagnostic(&result, "steam-shortcut", "Non-Steam shortcut titles unavailable - shortcuts.vdf could not be read safely.")
 				continue
+			}
+			if skipped > 0 {
+				addSteamDiagnostic(&result, "steam-shortcut",
+					fmt.Sprintf("Non-Steam titles loaded with %d incomplete shortcuts skipped.", skipped))
 			}
 			addSteamTitles(result.Titles, titles, "steam-shortcut")
 		}
@@ -367,8 +376,13 @@ func parseIndexedObject(r *steamBinaryReader, table []string, depth int) ([]stea
 }
 
 func parseSteamAppInfo(data []byte) (map[uint32]string, error) {
+	titles, _, err := parseSteamAppInfoDetailed(data)
+	return titles, err
+}
+
+func parseSteamAppInfoDetailed(data []byte) (map[uint32]string, int, error) {
 	if len(data) < 8 {
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	magic := binary.LittleEndian.Uint32(data)
 	switch magic {
@@ -377,81 +391,76 @@ func parseSteamAppInfo(data []byte) (map[uint32]string, error) {
 	case 0x07564428:
 		return parseSteamAppInfoV28(data)
 	default:
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 }
 
-func parseSteamAppInfoV29(data []byte) (map[uint32]string, error) {
+func parseSteamAppInfoV29(data []byte) (map[uint32]string, int, error) {
 	if len(data) < 16 {
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	offset := int64(binary.LittleEndian.Uint64(data[8:16]))
 	if offset < 16 || offset > int64(len(data)) {
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	tableReader := &steamBinaryReader{data: data[offset:]}
 	count, err := tableReader.u32()
 	if err != nil || count > steamMaxStrings {
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	table := make([]string, 0, count)
 	for i := uint32(0); i < count; i++ {
 		value, err := tableReader.cString()
 		if err != nil {
-			return nil, errSteamFormat
+			return nil, 0, errSteamFormat
 		}
 		table = append(table, value)
 	}
 	if tableReader.pos != len(tableReader.data) {
 		// The table is the final section. Bytes here would make record and
 		// string-table boundaries ambiguous.
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	return parseSteamAppRecords(data[16:offset], table, true)
 }
 
-func parseSteamAppInfoV28(data []byte) (map[uint32]string, error) {
+func parseSteamAppInfoV28(data []byte) (map[uint32]string, int, error) {
 	// v28 has only magic and universe before its app records.
 	return parseSteamAppRecords(data[8:], nil, false)
 }
 
-func parseSteamAppRecords(data []byte, table []string, indexed bool) (map[uint32]string, error) {
+func parseSteamAppRecords(data []byte, table []string, indexed bool) (map[uint32]string, int, error) {
 	reader := &steamBinaryReader{data: data}
 	titles := make(map[uint32]string)
 	recordCount := 0
 	foundSentinel := false
+	skipped := 0
 	for reader.pos < len(data) {
 		if recordCount >= steamMaxRecords || reader.remaining() < 4 {
-			return nil, errSteamFormat
+			return nil, skipped, errSteamFormat
 		}
 		appID, err := reader.u32()
 		if err != nil {
-			return nil, errSteamFormat
+			return nil, skipped, errSteamFormat
 		}
 		if appID == 0 {
 			if reader.remaining() != 0 {
-				return nil, errSteamFormat
+				return nil, skipped, errSteamFormat
 			}
 			foundSentinel = true
 			break
 		}
 		if reader.remaining() < 4 {
-			return nil, errSteamFormat
+			return nil, skipped, errSteamFormat
 		}
 		size, err := reader.u32()
 		if err != nil || size > uint32(steamMaxAppInfoFile) {
-			return nil, errSteamFormat
+			return nil, skipped, errSteamFormat
 		}
-		// Steam writers have used both interpretations of size: total app
-		// payload and KV payload. Prefer the documented total-payload form,
-		// but accept the latter without relaxing any bounds or KV checks.
-		lengths := make([]int, 0, 2)
-		if size >= 60 {
-			lengths = append(lengths, int(size))
+		if size < 60 || uint64(size) > uint64(reader.remaining()) {
+			return nil, skipped, errSteamFormat
 		}
-		if uint64(size)+60 <= uint64(reader.remaining()) {
-			lengths = append(lengths, int(uint64(size)+60))
-		}
+		lengths := []int{int(size)}
 		parsed := false
 		for _, length := range lengths {
 			if length > reader.remaining() || length < 60 {
@@ -479,18 +488,15 @@ func parseSteamAppRecords(data []byte, table []string, indexed bool) (map[uint32
 			// appinfo.vdf is a live cache that can contain records this
 			// reader does not model. Skip the record rather than guessing at
 			// it, but never let one record discard the rest of the library.
-			skip := int(size)
-			if skip < 60 || skip > reader.remaining() {
-				return nil, errSteamFormat
-			}
-			reader.pos += skip
+			reader.pos += int(size)
+			skipped++
 		}
 		recordCount++
 	}
 	if !foundSentinel {
-		return nil, errSteamFormat
+		return nil, skipped, errSteamFormat
 	}
-	return titles, nil
+	return titles, skipped, nil
 }
 
 func steamCommonName(root steamKV) (string, bool) {
@@ -554,6 +560,16 @@ func parseInlineValue(r *steamBinaryReader, depth int) (steamKV, error) {
 		err = readErr
 	case 0x07, 0x0b:
 		node.unsigned, err = r.u64()
+	case 0x03, 0x04, 0x06:
+		_, err = r.u32()
+	case 0x05:
+		var length uint32
+		length, err = r.u32()
+		if err == nil {
+			_, err = r.bytes(int(length) * 2)
+		}
+	case 0x0a:
+		node.unsigned, err = r.u64()
 	default:
 		err = errSteamFormat
 	}
@@ -585,9 +601,14 @@ func parseInlineObject(r *steamBinaryReader, depth int) ([]steamKV, error) {
 }
 
 func parseSteamShortcuts(data []byte) (map[uint32]string, error) {
+	titles, _, err := parseSteamShortcutsDetailed(data)
+	return titles, err
+}
+
+func parseSteamShortcutsDetailed(data []byte) (map[uint32]string, int, error) {
 	root, err := parseInlineKV(data)
 	if err != nil || root.kind != 0x00 {
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	var shortcutEntries []steamKV
 	for _, value := range root.children {
@@ -597,9 +618,10 @@ func parseSteamShortcuts(data []byte) (map[uint32]string, error) {
 		}
 	}
 	if shortcutEntries == nil {
-		return nil, errSteamFormat
+		return nil, 0, errSteamFormat
 	}
 	titles := make(map[uint32]string)
+	skipped := 0
 	for _, shortcut := range shortcutEntries {
 		if shortcut.kind != 0x00 {
 			continue
@@ -612,7 +634,8 @@ func parseSteamShortcuts(data []byte) (map[uint32]string, error) {
 			case strings.EqualFold(field.key, "appid") &&
 				(field.kind == 0x02 || field.kind == 0x07 || field.kind == 0x0b):
 				if field.unsigned > uint64(^uint32(0)) {
-					return nil, errSteamFormat
+					skipped++
+					continue
 				}
 				appID, haveID = uint32(field.unsigned), true
 			case strings.EqualFold(field.key, "appname") && field.kind == 0x01:
@@ -623,9 +646,11 @@ func parseSteamShortcuts(data []byte) (map[uint32]string, error) {
 			if _, exists := titles[appID]; !exists {
 				titles[appID] = title
 			}
+		} else {
+			skipped++
 		}
 	}
-	return titles, nil
+	return titles, skipped, nil
 }
 
 // --- text VDF ------------------------------------------------------------

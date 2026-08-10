@@ -23,10 +23,10 @@ func ResolveAll(roots []model.Root) Catalog {
 	}
 	for _, database := range playniteDatabasesFromRoots(roots) {
 		playnite := ReadPlaynite(database)
+		for _, diagnostic := range playnite.Diagnostics {
+			builder.AddDiagnostic(diagnostic)
+		}
 		if playnite.Status != playniteStatusOK {
-			for _, diagnostic := range playnite.Diagnostics {
-				builder.AddDiagnostic(diagnostic)
-			}
 			continue
 		}
 		if len(playnite.Games) == 0 {
