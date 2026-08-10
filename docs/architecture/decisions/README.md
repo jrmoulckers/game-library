@@ -3,7 +3,7 @@
 This directory holds ADRs for the canonical game-artwork/catalog plan. Recording
 consequential tradeoffs this way, and superseding rather than editing an accepted
 record, follows
-[`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/architecture/boundaries-and-contracts.md#durable-decisions).
+[`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/architecture/boundaries-and-contracts.md#durable-decisions).
 
 Repository-specific: each ADR uses the standard template (Status / Context /
 Decision / Consequences) and a sequential `NNNN-slug.md` name under
