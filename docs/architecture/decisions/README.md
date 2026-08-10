@@ -6,10 +6,18 @@ record, follows
 [`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/architecture/boundaries-and-contracts.md#durable-decisions).
 
 Repository-specific: each ADR uses the standard template (Status / Context /
-Decision / Consequences) and a sequential `NNNN-slug.md` name under
-`docs/architecture/decisions/`. Note that sibling repositories currently use a
-different location and numbering scheme; a unified convention is being decided
-centrally, so nothing here is renumbered yet.
+Decision / Consequences). Filenames follow the org convention `NNNN-short-title.md`
+([`docs/architecture/README.md`](https://github.com/jrmoulckers/engineering/blob/v0.2.13/docs/architecture/README.md)
+in `jrmoulckers/engineering`), which governs the filename rather than the
+directory. They live in this `decisions/` subdirectory because
+`docs/architecture/` also carries narrative prose (`adapters.md`, `tree.md`,
+`sources.md`, `identity-and-policy.md`, `migration-and-recovery.md`), and keeping
+decisions separate from prose is clearer than interleaving them.
+
+Numbers are permanent: never reused, and never renumbered once published, because
+citations from other repositories depend on a number identifying one record
+forever. Superseding a record leaves its number intact and marks it
+`Status: Superseded`.
 
 | # | Title | Status |
 |---|-------|--------|
