@@ -80,24 +80,35 @@ func readLiteString32(data []byte, at int) (string, int, bool) {
 	return value, at + 4 + int(length), true
 }
 
-func (r *playniteReader) readGames(collection collectionInfo) ([]PlayniteGame, error) {
+func (r *playniteReader) readGames(collection collectionInfo) ([]PlayniteGame, int, error) {
 	nodes, err := r.readLevelZero(collection)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	games := make([]PlayniteGame, 0, len(nodes))
 	seen := make(map[string]struct{}, len(nodes))
+	seenKeys := make(map[string]struct{}, len(nodes))
+	skipped := 0
 	for _, node := range nodes {
+		if _, duplicate := seenKeys[node.key]; duplicate {
+			return nil, skipped, errPlayniteCorrupt
+		}
+		seenKeys[node.key] = struct{}{}
 		doc, err := r.readDataDocument(node.data)
 		if err != nil {
-			return nil, err
+			skipped++
+			continue
 		}
 		game, err := gameFromDocument(doc)
-		if err != nil || node.key != game.PlayniteGUID {
-			return nil, errPlayniteCorrupt
+		if err != nil {
+			skipped++
+			continue
+		}
+		if node.key != game.PlayniteGUID {
+			return nil, skipped, errPlayniteCorrupt
 		}
 		if _, duplicate := seen[game.PlayniteGUID]; duplicate {
-			return nil, errPlayniteCorrupt
+			return nil, skipped, errPlayniteCorrupt
 		}
 		seen[game.PlayniteGUID] = struct{}{}
 		games = append(games, game)
@@ -108,7 +119,7 @@ func (r *playniteReader) readGames(collection collectionInfo) ([]PlayniteGame, e
 		}
 		return strings.ToLower(games[i].Name) < strings.ToLower(games[j].Name)
 	})
-	return games, nil
+	return games, skipped, nil
 }
 
 func (r *playniteReader) readLevelZero(collection collectionInfo) ([]indexNode, error) {

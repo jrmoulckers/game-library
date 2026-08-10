@@ -75,18 +75,15 @@ func TestSteamAppInfoRejectsUnknownTagsAndTruncation(t *testing.T) {
 	// reader does not model. Such a record is skipped rather than guessed at,
 	// and it must never discard the rest of the file.
 	unknown := testAppInfoV28WithKV(31, []byte{0x03, 0, 0, 0, 0})
-	titles, err := parseSteamAppInfo(unknown)
-	if err != nil {
-		t.Fatalf("an unmodelled record should be skipped, not fatal: %v", err)
-	}
-	if len(titles) != 0 {
-		t.Fatalf("titles = %#v, an unparsed record must not be guessed at", titles)
+	if titles, skipped, err := parseSteamAppInfoDetailed(unknown); err != nil || len(titles) != 0 || skipped != 1 {
+		t.Fatalf("unknown record should be skipped: titles=%#v skipped=%d err=%v", titles, skipped, err)
 	}
 	truncated := testAppInfoV28(map[uint32]string{31: "safe title"})
 	truncated = truncated[:len(truncated)-1]
 	if _, err := parseSteamAppInfo(truncated); err == nil {
 		t.Fatal("truncated binary source should reject")
 	}
+
 	newer := make([]byte, 16)
 	binary.LittleEndian.PutUint32(newer, 0x07564430)
 	if _, err := parseSteamAppInfo(newer); err == nil {
@@ -94,12 +91,8 @@ func TestSteamAppInfoRejectsUnknownTagsAndTruncation(t *testing.T) {
 	}
 	badIndex := testAppInfoV29(map[uint32]string{31: "synthetic title"})
 	binary.LittleEndian.PutUint32(badIndex[90:], 99)
-	corrupt, err := parseSteamAppInfo(badIndex)
-	if err != nil {
-		t.Fatalf("a corrupt record should be skipped, not fatal: %v", err)
-	}
-	if len(corrupt) != 0 {
-		t.Fatalf("titles = %#v, an out-of-range string index must not resolve a title", corrupt)
+	if titles, skipped, err := parseSteamAppInfoDetailed(badIndex); err != nil || len(titles) != 0 || skipped != 1 {
+		t.Fatalf("bad table-index record should be skipped: titles=%#v skipped=%d err=%v", titles, skipped, err)
 	}
 }
 
@@ -117,6 +110,29 @@ func TestSteamAppInfoSkipsOnlyTheUnreadableRecord(t *testing.T) {
 	}
 	if _, ok := titles[11]; ok {
 		t.Fatalf("titles = %#v, the unreadable record must not be invented", titles)
+	}
+}
+
+func TestSteamAppInfoKeepsGoodRecordsAfterUnknownRecord(t *testing.T) {
+	var out bytes.Buffer
+	_ = binary.Write(&out, binary.LittleEndian, uint32(0x07564428))
+	_ = binary.Write(&out, binary.LittleEndian, uint32(1))
+	for _, record := range []struct {
+		id uint32
+		kv []byte
+	}{
+		{31, []byte{0x03, 0, 0, 0, 0}},
+		{32, inlineCommonNameKV("Synthetic surviving title")},
+	} {
+		payload := append(make([]byte, 60), record.kv...)
+		_ = binary.Write(&out, binary.LittleEndian, record.id)
+		_ = binary.Write(&out, binary.LittleEndian, uint32(len(payload)))
+		out.Write(payload)
+	}
+	_ = binary.Write(&out, binary.LittleEndian, uint32(0))
+	titles, skipped, err := parseSteamAppInfoDetailed(out.Bytes())
+	if err != nil || skipped != 1 || titles[32] != "Synthetic surviving title" {
+		t.Fatalf("titles=%#v skipped=%d err=%v", titles, skipped, err)
 	}
 }
 
