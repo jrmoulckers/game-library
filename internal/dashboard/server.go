@@ -73,7 +73,7 @@ func NewHandler(allowedHost string, opts Options) (handler http.Handler, csrfTok
 	}
 	h := &handlers{
 		opts: opts.withDefaults(), csrfToken: token,
-		snapshots: &snapshotCache{}, scans: &scanManager{}, metadata: &metadataCache{},
+		snapshots: &snapshotCache{}, scans: &scanManager{}, metadata: &metadataCache{}, thumbs: newThumbnailCache(),
 	}
 	chain := &securityChain{allowedHost: allowedHost, csrfToken: token, next: h.mux()}
 	return chain, token, nil

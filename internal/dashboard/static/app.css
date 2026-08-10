@@ -308,6 +308,13 @@ body {
   gap: 1.25rem;
 }
 
+/* Let the browser skip layout and paint for tiles scrolled out of
+   view, which keeps large libraries responsive while filtering. */
+.game-tile {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 17rem;
+}
+
 .platform-assets {
   display: flex;
   overflow-x: auto;
@@ -342,6 +349,10 @@ body {
   position: absolute;
   right: 0.4rem;
   bottom: 0.4rem;
+}
+
+.game-tile[hidden] {
+  display: none;
 }
 
 .game-tile {
@@ -1449,4 +1460,29 @@ body .app-footer {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+.profile-create {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--graphite-200, #d9dde1);
+  border-radius: 0.6rem;
+}
+
+.profile-create label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.profile-create__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.profile-create__row input {
+  flex: 1 1 14rem;
+  min-width: 0;
 }

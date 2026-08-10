@@ -7,28 +7,14 @@
 import { api, configureCSRF } from "./api.js";
 import { initStatus, announceError } from "./status.js";
 import * as setup from "./setup.js";
-import * as overview from "./overview.js";
-import * as artwork from "./artwork.js";
-import * as identity from "./identity.js";
-import * as duplicates from "./duplicates.js";
-import * as policyPage from "./policy.js";
-import * as profiles from "./profiles.js";
-import * as plans from "./plans.js";
-import * as adapters from "./adapters.js";
-import * as recovery from "./recovery.js";
 import * as organizer from "./organizer.js";
 
+// Only the library organizer and the source setup form remain. The
+// former review/audit sections (overview, artwork, identity,
+// duplicates, policy, profiles, plans, adapters, recovery) each ran
+// their own API calls on page load, which dominated startup cost.
 const sections = [
   ["setup", setup],
-  ["overview", overview],
-  ["artwork", artwork],
-  ["identity", identity],
-  ["duplicates", duplicates],
-  ["policy", policyPage],
-  ["profiles", profiles],
-  ["plans", plans],
-  ["adapters", adapters],
-  ["recovery", recovery],
 ];
 
 function initStageRail() {

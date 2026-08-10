@@ -12,7 +12,6 @@ import (
 	"github.com/jrmoulckers/game-library/internal/config"
 	"github.com/jrmoulckers/game-library/internal/manifest"
 	"github.com/jrmoulckers/game-library/internal/model"
-	"github.com/jrmoulckers/game-library/internal/policy"
 	"github.com/jrmoulckers/game-library/internal/profile"
 	"github.com/jrmoulckers/game-library/internal/workspace"
 )
@@ -23,6 +22,7 @@ type handlers struct {
 	snapshots *snapshotCache
 	scans     *scanManager
 	metadata  *metadataCache
+	thumbs    *thumbnailCache
 	stateMu   sync.RWMutex
 }
 
@@ -40,33 +40,13 @@ func (h *handlers) mux() *http.ServeMux {
 	mux.HandleFunc("GET /api/sources/detect", h.detectSources)
 	mux.HandleFunc("GET /api/config", h.getConfig)
 	mux.HandleFunc("PUT /api/config", h.putConfig)
-	mux.HandleFunc("GET /api/drafts/policy", h.getPolicyDraft)
-	mux.HandleFunc("PUT /api/drafts/policy", h.putPolicyDraft)
 	mux.HandleFunc("GET /api/drafts/profiles/{id}", h.getProfileDraft)
 	mux.HandleFunc("PUT /api/drafts/profiles/{id}", h.putProfileDraft)
-	mux.HandleFunc("GET /api/review/overview", h.reviewOverview)
-	mux.HandleFunc("POST /api/review/refresh", h.reviewRefresh)
-	mux.HandleFunc("GET /api/review/observations", h.reviewObservations)
 	mux.HandleFunc("GET /api/review/media/{id}", h.reviewMedia)
+	mux.HandleFunc("GET /api/media/{id}/thumb", h.mediaThumb)
 	mux.HandleFunc("GET /api/review/media/{id}/download", h.reviewMediaDownload)
-	mux.HandleFunc("GET /api/review/identity", h.reviewIdentity)
-	mux.HandleFunc("GET /api/review/duplicates", h.reviewDuplicates)
-	mux.HandleFunc("GET /api/review/policy-impact", h.reviewPolicyImpact)
-	mux.HandleFunc("POST /api/review/policy-impact-preview", h.reviewPolicyImpactPreview)
 	mux.HandleFunc("GET /api/review/profiles", h.reviewProfileDrafts)
-	mux.HandleFunc("GET /api/review/themes", h.reviewThemes)
-	mux.HandleFunc("GET /api/review/adapters", h.reviewAdapterStatus)
-	mux.HandleFunc("GET /api/review/history", h.reviewHistory)
 	mux.HandleFunc("POST /api/config/validate-roots", h.validateSetupRoots)
-	mux.HandleFunc("GET /api/review/profiles/{id}/resolve", h.reviewProfileResolve)
-	mux.HandleFunc("GET /api/review/profiles/{id}/export/{adapter}", h.reviewExportPreview)
-	mux.HandleFunc("POST /api/review/plans/import", h.reviewPlanImport)
-	mux.HandleFunc("POST /api/review/plans/bundle", h.reviewPlanBundle)
-	mux.HandleFunc("POST /api/review/plans/export", h.reviewPlanExport)
-	mux.HandleFunc("POST /api/review/manifest-analysis", h.reviewManifestAnalysis)
-	mux.HandleFunc("POST /api/review/gates/a", h.reviewGateA)
-	mux.HandleFunc("POST /api/review/gates/b", h.reviewGateB)
-	mux.HandleFunc("POST /api/review/gates/c", h.reviewGateC)
 	return mux
 }
 
@@ -177,51 +157,6 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, configView{Exists: true, Config: &body.Config, Digest: digest})
-}
-
-type policyDraftView struct {
-	Exists bool                           `json:"exists"`
-	Draft  *workspace.PolicyDraftEnvelope `json:"draft,omitempty"`
-}
-
-func (h *handlers) getPolicyDraft(w http.ResponseWriter, r *http.Request) {
-	draft, found, err := workspace.LoadPolicyDraft(h.opts.Workspace)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to read the policy draft")
-		return
-	}
-	view := policyDraftView{Exists: found}
-	if found {
-		view.Draft = &draft
-	}
-	writeJSON(w, http.StatusOK, view)
-}
-
-type policyDraftRequest struct {
-	BaseDigest string           `json:"baseDigest"`
-	Policy     model.PolicyFile `json:"policy"`
-}
-
-func (h *handlers) putPolicyDraft(w http.ResponseWriter, r *http.Request) {
-	var body policyDraftRequest
-	if err := decodeJSON(r, &body); err != nil {
-		writeDecodeError(w, err)
-		return
-	}
-	if err := policy.Validate(body.Policy); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid_policy", err.Error())
-		return
-	}
-	envelope, err := workspace.SavePolicyDraft(h.opts.Workspace, body.BaseDigest, body.Policy)
-	if err != nil {
-		if errors.Is(err, workspace.ErrConflict) {
-			writeJSONError(w, http.StatusConflict, "draft_conflict", "base digest is stale; reload the draft and retry")
-			return
-		}
-		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to save the policy draft")
-		return
-	}
-	writeJSON(w, http.StatusOK, envelope)
 }
 
 type profileDraftView struct {

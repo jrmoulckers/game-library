@@ -39,13 +39,14 @@ func TestIndexHasCoreLandmarksAndSkipLink(t *testing.T) {
 	}
 }
 
-// requiredSections lists every stage this dashboard's product plan
-// requires, keyed by its section id. TestIndexHasEverySectionWithHeadingAndCaption
-// walks this list so a future removal of a required stage fails loudly.
+// requiredSections lists every view this dashboard requires, keyed by
+// its section id. TestIndexHasEverySectionWithHeadingAndCaption walks
+// this list so a future removal of a required view fails loudly. The
+// former review/audit stages were intentionally removed: the product is
+// an artwork library, not an audit console.
 var requiredSections = []string{
 	"library", "platform-detail", "game-detail", "profile-library", "sources",
-	"setup", "overview", "artwork", "identity", "duplicates",
-	"policy", "profiles", "plans", "adapters", "recovery",
+	"setup",
 }
 
 // TestIndexHasEverySectionWithHeadingAndCaption covers the "explicit state
@@ -124,9 +125,7 @@ func TestStaticAssetsServeSelfOriginScriptAndStyle(t *testing.T) {
 	}
 
 	jsFilesToCheck := []string{
-		"main.js", "api.js", "dom.js", "status.js", "setup.js", "overview.js",
-		"artwork.js", "identity.js", "duplicates.js", "policy.js", "profiles.js",
-		"plans.js", "adapters.js", "recovery.js", "organizer.js",
+		"main.js", "api.js", "dom.js", "status.js", "setup.js", "organizer.js",
 	}
 	for _, name := range jsFilesToCheck {
 		rec := fetch(t, handler, "/static/js/"+name)
@@ -166,14 +165,14 @@ func TestStaticJSRejectsUnknownName(t *testing.T) {
 // requiredCopyBoundaries lists literal phrases the accepted plan requires
 // to be visible in the rendered shell, expressed as substrings so wording
 // tweaks that keep the meaning intact do not need to touch this test.
+// requiredCopyBoundaries are the safety statements that must remain
+// visible in the shell. The plan/draft/apply-gate vocabulary was
+// intentionally dropped along with the audit console; what still matters
+// is that the user is told this tool reads their libraries without
+// changing them.
 var requiredCopyBoundaries = []string{
 	"Read-only",
 	"no changes are made to your libraries",
-	"draft",
-	"plan-only",
-	"Apply is unavailable",
-	"ever executes, publishes, prunes, deletes, or rolls back",
-	"no applied or rolled-back history",
 	"canonical",
 	"homelab",
 }
@@ -223,15 +222,12 @@ func TestFormControlsHaveMatchingLabels(t *testing.T) {
 
 	pairs := []string{
 		"setup-default-mode",
-		"filter-source",
-		"filter-validation",
-		"gate-a-reviewer",
-		"policy-default-mode",
-		"profile-name",
-		"profile-theme",
-		"plan-bundle-profile",
-		"gate-b-gate-a-id",
-		"gate-c-gate-b-id",
+		"game-search",
+		"game-coverage",
+		"game-role",
+		"game-source",
+		"game-sort",
+		"profile-new-name",
 	}
 	for _, id := range pairs {
 		if !strings.Contains(body, `for="`+id+`"`) {

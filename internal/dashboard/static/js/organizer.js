@@ -12,8 +12,22 @@ function mediaURL(id) {
   return `/api/review/media/${encodeURIComponent(id)}`;
 }
 
+function thumbURL(id) {
+  return `/api/media/${encodeURIComponent(id)}/thumb`;
+}
+
 function image(id, alt, className = "") {
-  const img = el("img", { src: mediaURL(id), alt, loading: "lazy", class: className });
+  const img = el("img", { src: thumbURL(id), alt, loading: "lazy", decoding: "async", class: className });
+  img.addEventListener("error", () => {
+    img.hidden = true;
+    const fallback = el("span", { class: "broken-art", text: "Preview unavailable" });
+    img.parentElement?.appendChild(fallback);
+  }, { once: true });
+  return img;
+}
+
+function fullImage(id, alt, className = "") {
+  const img = el("img", { src: mediaURL(id), alt, loading: "lazy", decoding: "async", class: className });
   img.addEventListener("error", () => {
     img.hidden = true;
     const fallback = el("span", { class: "broken-art", text: "Preview unavailable" });
@@ -128,16 +142,52 @@ function gameTile(game) {
   ]);
 }
 
-function renderGameGrid() {
+// Tiles are built once per platform and then shown/hidden in place.
+// Rebuilding the grid on every keystroke recreated every <img>, which
+// made typing in the search box unusable on a real library.
+let tileNodes = new Map();
+let tilePlatform = null;
+
+function ensureTiles() {
   const grid = document.getElementById("game-grid");
+  if (tilePlatform === activePlatform && tileNodes.size) return grid;
   clear(grid);
+  tileNodes = new Map();
+  tilePlatform = activePlatform;
+  const fragment = document.createDocumentFragment();
+  for (const game of catalog.games || []) {
+    if (game.platformId !== activePlatform) continue;
+    const node = gameTile(game);
+    tileNodes.set(game.id, node);
+    fragment.appendChild(node);
+  }
+  grid.appendChild(fragment);
+  return grid;
+}
+
+function renderGameGrid() {
+  const grid = ensureTiles();
   const games = visibleGames();
+  const order = new Map(games.map((game, index) => [game.id, index]));
+  for (const [id, node] of tileNodes) {
+    const index = order.get(id);
+    if (index === undefined) {
+      node.hidden = true;
+      continue;
+    }
+    node.hidden = false;
+    // Reordering via CSS order avoids DOM moves entirely, so images
+    // are never detached and never re-requested while filtering.
+    node.style.order = String(index);
+  }
+  let empty = grid.querySelector(".empty-state");
   if (!games.length) {
-    grid.appendChild(el("p", { class: "empty-state", text: "No games match these filters." }));
+    if (!empty) grid.appendChild(el("p", { class: "empty-state", text: "No games match these filters." }));
+    else empty.hidden = false;
     document.getElementById("game-grid-status").textContent = "No games match these filters.";
     return;
   }
-  for (const game of games) grid.appendChild(gameTile(game));
+  if (empty) empty.hidden = true;
   document.getElementById("game-grid-status").textContent =
     `${games.length} ${games.length === 1 ? "game" : "games"} shown.`;
 }
@@ -194,7 +244,7 @@ function openPreview(asset, title) {
   dialogOpeners.set(dialog, document.activeElement);
   const figure = dialog.querySelector("figure");
   clear(figure);
-  figure.appendChild(image(asset.id, `${title} ${asset.role}`, "preview-image"));
+  figure.appendChild(fullImage(asset.id, `${title} ${asset.role}`, "preview-image"));
   figure.appendChild(el("figcaption", { text: `${title} · ${asset.role} · ${asset.width || "?"}x${asset.height || "?"}` }));
   dialog.showModal();
 }
@@ -202,9 +252,9 @@ function openPreview(asset, title) {
 async function chooseForProfile(asset, game, api, announceStatus, announceError) {
   const summaries = await api.get("/api/review/profiles");
   if (!summaries.length) {
-    announceError("Create a profile in Advanced before choosing artwork for it.");
-    document.getElementById("advanced").open = true;
-    document.getElementById("profiles")?.scrollIntoView();
+    announceError("Create a profile for a device first, then choose artwork for it.");
+    showView("profile-library");
+    document.getElementById("profile-new-name")?.focus();
     return;
   }
   const dialog = document.getElementById("profile-picker");
@@ -299,7 +349,7 @@ async function renderProfiles(api) {
   clear(grid);
   const profiles = await api.get("/api/review/profiles");
   if (!profiles.length) {
-    grid.appendChild(el("p", { class: "empty-state", text: "No saved profiles yet. Create one in Advanced, then choose artwork directly from a game's gallery." }));
+    grid.appendChild(el("p", { class: "empty-state", text: "No profiles yet. Create one above for a device, then pick artwork from any game's gallery." }));
     return;
   }
   for (const profile of profiles) {
@@ -315,12 +365,40 @@ async function renderProfiles(api) {
         el("h3", { text: profile.name }),
         el("p", { text: `${games.length} games · ${assets.length} artwork selections` }),
         profile.theme ? chip(`Theme: ${profile.theme}`) : null,
-        el("a", {
-          href: "#profiles", class: "text-link", text: "Edit profile details in Advanced",
-          "data-advanced-target": "profiles",
-        }),
       ]),
     ]));
+  }
+}
+
+// slugify turns a display name into the path-safe id the profile
+// schema requires, so the user only ever types a device name.
+function slugify(name) {
+  return name.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
+}
+
+async function createProfile(api, announceStatus, announceError) {
+  const input = document.getElementById("profile-new-name");
+  const name = input.value.trim();
+  const id = slugify(name);
+  if (!id) {
+    announceError("Give the profile a name that contains letters or numbers.");
+    return;
+  }
+  try {
+    const existing = await api.get(`/api/drafts/profiles/${encodeURIComponent(id)}`);
+    if (existing.exists) {
+      announceError(`A profile named "${name}" already exists.`);
+      return;
+    }
+    await api.put(`/api/drafts/profiles/${encodeURIComponent(id)}`, {
+      baseDigest: "",
+      profile: { version: 1, id, name, games: [] },
+    });
+    input.value = "";
+    announceStatus(`Created the "${name}" profile. Pick artwork from a game to add it.`);
+    await renderProfiles(api);
+  } catch (err) {
+    announceError(`Could not create the profile: ${err.message}`);
   }
 }
 
@@ -354,7 +432,7 @@ async function renderSources(api) {
     }
   }
   if (!items.length) {
-    grid.appendChild(el("p", { class: "empty-state", text: "No artwork sources were detected. Add a folder manually in Advanced." }));
+    grid.appendChild(el("p", { class: "empty-state", text: "No artwork sources were detected. Add a folder manually under Source folders." }));
     return detected;
   }
   for (const source of items) {
@@ -506,8 +584,23 @@ export async function init({ api, announceStatus, announceError }) {
   document.getElementById("platform-back").addEventListener("click", () => showView("library"));
   document.getElementById("game-back").addEventListener("click", () => openPlatform(activePlatform));
   for (const id of ["game-search", "game-coverage", "game-role", "game-source", "game-sort"]) {
-    document.getElementById(id).addEventListener(id === "game-search" ? "input" : "change", renderGameGrid);
+    const control = document.getElementById(id);
+    if (id !== "game-search") {
+      control.addEventListener("change", renderGameGrid);
+      continue;
+    }
+    // Coalesce keystrokes so a fast typist triggers one filter pass
+    // per pause rather than one per character.
+    let pending = 0;
+    control.addEventListener("input", () => {
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(renderGameGrid);
+    });
   }
+  document.getElementById("profile-create").addEventListener("submit", (event) => {
+    event.preventDefault();
+    createProfile(api, announceStatus, announceError);
+  });
   document.getElementById("library-refresh").addEventListener("click", async () => {
     try {
       const progress = document.getElementById("scan-progress");

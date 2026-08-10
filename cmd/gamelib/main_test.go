@@ -146,7 +146,10 @@ func TestNewServeServerWiresInventoryReportAndCatalogFlags(t *testing.T) {
 		<-done
 	}()
 
-	resp, err := http.Get("http://" + srv.Addr() + "/api/review/overview")
+	// The organizer catalog reads the same snapshot the --inventory-report
+	// flag populates, so a successful response with the report's single
+	// observation proves both flags reached the server.
+	resp, err := http.Get("http://" + srv.Addr() + "/api/organizer")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,13 +157,19 @@ func TestNewServeServerWiresInventoryReportAndCatalogFlags(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
-	var overview struct {
-		Source string `json:"source"`
+	var catalog struct {
+		Platforms []struct {
+			ArtworkCount int `json:"artworkCount"`
+		} `json:"platforms"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&overview); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&catalog); err != nil {
 		t.Fatal(err)
 	}
-	if overview.Source != "report" {
-		t.Fatalf("expected the dashboard to load from the --inventory-report file, got source=%q", overview.Source)
+	total := 0
+	for _, platform := range catalog.Platforms {
+		total += platform.ArtworkCount
+	}
+	if total != 1 {
+		t.Fatalf("expected the dashboard to load the single observation from the --inventory-report file, got %d artwork entries", total)
 	}
 }

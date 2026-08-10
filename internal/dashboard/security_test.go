@@ -160,7 +160,7 @@ func TestSafeGETNeverRequiresOriginOrCSRF(t *testing.T) {
 func TestBodyTooLargeIsRejected(t *testing.T) {
 	handler, token := newTestHandler(t)
 	huge := strings.Repeat("a", maxBodyBytes+1024)
-	req := newRequest("PUT", "/api/drafts/policy")
+	req := newRequest("PUT", "/api/drafts/profiles/example")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://"+testHost)
 	req.Header.Set(csrfHeader, token)
@@ -234,7 +234,7 @@ func TestMutationRoutesDoNotExist(t *testing.T) {
 	// registered for GET/PUT only, so the standard library mux correctly
 	// reports 405 Method Not Allowed rather than 404, but no delete
 	// handler exists either way.
-	noDelete := []string{"/api/config", "/api/drafts/policy", "/api/drafts/profiles/example"}
+	noDelete := []string{"/api/config", "/api/drafts/profiles/example"}
 	for _, path := range noDelete {
 		req := newRequest("DELETE", path)
 		req.Header.Set("Content-Type", "application/json")

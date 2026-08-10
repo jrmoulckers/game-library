@@ -177,53 +177,6 @@ func examplePolicyFile() model.PolicyFile {
 	}
 }
 
-type policyDraftRequestBody struct {
-	BaseDigest string           `json:"baseDigest"`
-	Policy     model.PolicyFile `json:"policy"`
-}
-
-func TestPolicyDraftRoundTripAndConflict(t *testing.T) {
-	handler, token := newTestHandler(t)
-
-	rec := fetch(t, handler, "/api/drafts/policy")
-	var view policyDraftView
-	if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
-		t.Fatal(err)
-	}
-	if view.Exists {
-		t.Fatal("expected no policy draft before any save")
-	}
-
-	rec = mutate(t, handler, token, "PUT", "/api/drafts/policy", policyDraftRequestBody{
-		BaseDigest: "", Policy: examplePolicyFile(),
-	})
-	if rec.Code != 200 {
-		t.Fatalf("PUT policy draft status = %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// Stale digest must conflict.
-	rec = mutate(t, handler, token, "PUT", "/api/drafts/policy", policyDraftRequestBody{
-		BaseDigest: "stale", Policy: examplePolicyFile(),
-	})
-	if rec.Code != 409 {
-		t.Fatalf("expected 409 for a stale base digest, got %d: %s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestPolicyDraftRejectsInvalidPolicy(t *testing.T) {
-	handler, token := newTestHandler(t)
-	invalid := model.PolicyFile{Version: model.SchemaVersion, Default: "not-a-mode"}
-	rec := mutate(t, handler, token, "PUT", "/api/drafts/policy", policyDraftRequestBody{Policy: invalid})
-	if rec.Code != 400 {
-		t.Fatalf("expected 400 for an invalid policy, got %d", rec.Code)
-	}
-}
-
-type profileDraftRequestBody struct {
-	BaseDigest string        `json:"baseDigest"`
-	Profile    model.Profile `json:"profile"`
-}
-
 func exampleProfile(id string) model.Profile {
 	return model.Profile{
 		Version: model.SchemaVersion,
@@ -238,6 +191,11 @@ func exampleProfile(id string) model.Profile {
 			},
 		},
 	}
+}
+
+type profileDraftRequestBody struct {
+	BaseDigest string        `json:"baseDigest"`
+	Profile    model.Profile `json:"profile"`
 }
 
 func TestProfileDraftRoundTripAndConflict(t *testing.T) {
