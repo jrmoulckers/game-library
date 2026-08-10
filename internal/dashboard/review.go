@@ -5,15 +5,19 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jrmoulckers/game-library/internal/config"
 	"github.com/jrmoulckers/game-library/internal/manifest"
 	"github.com/jrmoulckers/game-library/internal/model"
+	"github.com/jrmoulckers/game-library/internal/organizer"
 	"github.com/jrmoulckers/game-library/internal/profile"
 	"github.com/jrmoulckers/game-library/internal/review"
+	"github.com/jrmoulckers/game-library/internal/source"
 	"github.com/jrmoulckers/game-library/internal/workspace"
 )
 
@@ -80,6 +84,7 @@ func (h *handlers) loadAllProfileDrafts(w http.ResponseWriter) ([]model.Profile,
 		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to list profile drafts")
 		return nil, false
 	}
+
 	profiles := make([]model.Profile, 0, len(ids))
 	for _, id := range ids {
 		draft, found, err := workspace.LoadProfileDraft(h.opts.Workspace, id)
@@ -92,6 +97,112 @@ func (h *handlers) loadAllProfileDrafts(w http.ResponseWriter) ([]model.Profile,
 		}
 	}
 	return profiles, true
+}
+
+func (h *handlers) organizerCatalog(w http.ResponseWriter, r *http.Request) {
+	h.stateMu.RLock()
+	defer h.stateMu.RUnlock()
+	cfg, ok := h.requireActiveConfig(w)
+	if !ok {
+		return
+	}
+	h.metadata.start(cfg.Roots, false)
+	snapshot, ok := h.loadOrganizerSnapshot(w, cfg)
+	if !ok {
+		return
+	}
+	profiles, ok := h.loadAllProfileDrafts(w)
+	if !ok {
+		return
+	}
+	titles, metadataStatus := h.metadata.current()
+	view := organizer.BuildWithMetadata(snapshot, profiles, titles)
+	writeJSON(w, http.StatusOK, struct {
+		organizer.Catalog
+		MetadataStatus string `json:"metadataStatus"`
+	}{Catalog: view, MetadataStatus: metadataStatus})
+}
+
+func (h *handlers) organizerGame(w http.ResponseWriter, r *http.Request) {
+	h.stateMu.RLock()
+	defer h.stateMu.RUnlock()
+	cfg, ok := h.requireActiveConfig(w)
+	if !ok {
+		return
+	}
+	h.metadata.start(cfg.Roots, false)
+	snapshot, ok := h.loadOrganizerSnapshot(w, cfg)
+	if !ok {
+		return
+	}
+
+	profiles, ok := h.loadAllProfileDrafts(w)
+	if !ok {
+		return
+	}
+	titles, _ := h.metadata.current()
+	game, found := organizer.FindGame(organizer.BuildWithMetadata(snapshot, profiles, titles), r.PathValue("id"))
+	if !found {
+		status := h.scans.snapshot().Status
+		if status == "scanning" || status == "cancelling" || status == "idle" {
+			writeJSONError(w, http.StatusServiceUnavailable, "scan_starting", "the artwork scan has not reached this game yet")
+			return
+		}
+		writeJSONError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, game)
+}
+
+func (h *handlers) loadOrganizerSnapshot(w http.ResponseWriter, cfg model.Config) (review.Snapshot, bool) {
+	if h.opts.InventoryReport != "" {
+		return h.loadReviewSnapshot(w, cfg)
+	}
+	snapshot, found, err := h.snapshots.current()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to load the inventory snapshot")
+		return review.Snapshot{}, false
+	}
+	if !found {
+		started := h.scans.start(cfg, h.snapshots)
+		snapshot, found, err = h.snapshots.current()
+		if !found && !started {
+			status := h.scans.snapshot().Status
+			if status == "scanning" || status == "cancelling" || status == "idle" {
+				return review.NewSnapshot(cfg, model.Inventory{
+					Version: model.SchemaVersion, ToolVersion: model.ToolVersion,
+					CreatedAt: time.Now().UTC().Format(time.RFC3339), Privacy: "private",
+				}, review.SourceScan, time.Now().UTC()), true
+			}
+		}
+	}
+	if err != nil || !found {
+		writeJSONError(w, http.StatusServiceUnavailable, "scan_starting", "the artwork scan is starting")
+		return review.Snapshot{}, false
+	}
+	return snapshot, true
+}
+
+func (h *handlers) detectSources(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := h.loadConfigLeniently(w)
+	if !ok {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to locate the local home directory")
+		return
+	}
+	detected := source.Detect(source.Environment{GOOS: runtime.GOOS, HomeDir: home}, cfg.Roots)
+	h.metadata.start(cfg.Roots, false)
+	metadataCatalog, metadataStatus := h.metadata.current()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"sources":             detected,
+		"supported":           source.SupportedStates(detected, cfg.Roots),
+		"caseSensitive":       runtime.GOOS != "windows",
+		"metadataStatus":      metadataStatus,
+		"metadataDiagnostics": metadataCatalog.Diagnostics,
+	})
 }
 
 // artifactRef converts an absolute artifact path (as returned by

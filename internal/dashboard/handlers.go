@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"sync"
 
 	"github.com/jrmoulckers/game-library/internal/config"
 	"github.com/jrmoulckers/game-library/internal/manifest"
@@ -20,6 +21,9 @@ type handlers struct {
 	opts      Options
 	csrfToken string
 	snapshots *snapshotCache
+	scans     *scanManager
+	metadata  *metadataCache
+	stateMu   sync.RWMutex
 }
 
 func (h *handlers) mux() *http.ServeMux {
@@ -29,6 +33,11 @@ func (h *handlers) mux() *http.ServeMux {
 	mux.HandleFunc("GET /static/js/{name}", h.staticJS)
 	mux.HandleFunc("GET /healthz", h.health)
 	mux.HandleFunc("GET /api/bootstrap", h.bootstrap)
+	mux.HandleFunc("GET /api/organizer", h.organizerCatalog)
+	mux.HandleFunc("GET /api/organizer/games/{id}", h.organizerGame)
+	mux.HandleFunc("POST /api/organizer/scan", h.startOrganizerScan)
+	mux.HandleFunc("GET /api/organizer/scan", h.organizerScanStatus)
+	mux.HandleFunc("GET /api/sources/detect", h.detectSources)
 	mux.HandleFunc("GET /api/config", h.getConfig)
 	mux.HandleFunc("PUT /api/config", h.putConfig)
 	mux.HandleFunc("GET /api/drafts/policy", h.getPolicyDraft)
@@ -143,6 +152,8 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "invalid_config", err.Error())
 		return
 	}
+	h.stateMu.Lock()
+	defer h.stateMu.Unlock()
 	if err := workspace.WriteActiveConfig(h.opts.Workspace.Config, body.BaseDigest, body.Config); err != nil {
 		if errors.Is(err, workspace.ErrConflict) {
 			writeJSONError(w, http.StatusConflict, "config_conflict", "base digest is stale; reload the active configuration and retry")
@@ -154,7 +165,12 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 	// The configured roots may have just changed: any cached review
 	// snapshot was computed against the previous configuration and must
 	// never be served again.
-	h.snapshots.invalidate()
+	h.scans.invalidate()
+	h.metadata.invalidate()
+	if err := h.snapshots.invalidateFor(body.Config); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to update the inventory snapshot state")
+		return
+	}
 	digest, err := manifest.Digest(body.Config)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to digest the saved configuration")

@@ -44,6 +44,28 @@ concurrent writes.
   is added.
 - Permit profile drafts to select a safe theme ID. Standalone theme authoring
   waits for a separately accepted theme contract.
+- Present the primary dashboard as an organizer: Library, Platform, Game,
+  Profiles, and Sources. Move the existing review, policy, planning, adapter,
+  and recovery surfaces into a single Advanced disclosure without removing
+  their endpoints or behavior.
+- Build organizer views in a Go-only read-model package over the existing
+  snapshot, identity, media, and profile contracts. Browser modules only render
+  those views and submit existing validated draft/config shapes.
+- Autodetect conventional Windows and Linux source locations using local
+  filesystem probes. Detection is read-only, makes no network request, and
+  requires explicit confirmation before host-local configuration changes.
+- Allow an organizer scan to process roots incrementally and publish partial
+  in-memory snapshots. The legacy review refresh remains synchronous and
+  compatible; neither path persists private inventory.
+- Resolve organizer titles through a process-memory, read-only metadata cache.
+  Steam appinfo/manifests/shortcuts, Playnite LiteDB v4 data, and ES-DE
+  gamelists are optional providers; malformed, busy, unsupported, or changing
+  metadata degrades to placeholders without failing inventory.
+- Permit a Playnite-to-Steam entity join only when a reviewed Playnite Steam
+  plugin ID and numeric storefront GameId identify the exact Steam AppID.
+  Titles never create identity edges.
+- Model supported source absence as local-device state. The dashboard does not
+  ping, SSH, mount, or otherwise inspect another device or remote service.
 
 ## Consequences
 
@@ -57,3 +79,6 @@ concurrent writes.
   canonical data.
 - Live frontend publication remains a homelab ownership seam, and Playnite
   database write-back remains prohibited.
+- The common path now begins with recognizable platforms, games, and artwork;
+  implementation-specific review language remains available to expert users
+  without defining the product's first impression.

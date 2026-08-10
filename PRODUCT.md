@@ -9,23 +9,24 @@ web
 ## Users
 
 The primary user is the local owner of a private game-artwork library. They use
-the dashboard on desktop and Steam Deck browsers to understand source
-inventories, resolve identities, author retention and profile drafts, and review
-safe migration/export plans without editing JSON by hand.
+the dashboard on desktop and Steam Deck browsers to browse platforms and games,
+see every artwork role, understand presentation profiles, fill coverage gaps,
+and connect local sources without learning repository-specific vocabulary.
 
 ## Product Purpose
 
-`gamelib` makes artwork and profile state across Steam, Playnite, Deck Gaming
-Profiles, RetroDECK/ES-DE, RomM, and the canonical GamingProfiles catalog
-understandable and reviewable. Success means the user can trace every proposed
-identity, retention outcome, profile closure, duplicate classification, and plan
-action before any live system could change.
+`gamelib` organizes artwork and profile state across Steam, Playnite, Deck
+Gaming Profiles, RetroDECK/ES-DE, RomM, and the canonical GamingProfiles
+catalog. Success means the user opens a platform, recognizes games by their
+artwork and titles, sees available and missing roles, and understands which
+profiles and frontends use each asset.
 
 ## Positioning
 
-The product is a recovery-first local workbench over deterministic Go contracts:
-it explains and records plans, but never silently fuzzy-merges identities,
-deletes by hash, promotes assets, or mutates a live frontend.
+The product is an artwork-first local organizer over deterministic Go contracts.
+It keeps recovery and review tools available in Advanced, but never silently
+fuzzy-merges identities, deletes by hash, promotes assets, or mutates a live
+frontend.
 
 ## Operating Context
 
@@ -51,6 +52,20 @@ repository.
   case-collision handling, Unicode safety, deterministic output, and Decky v1
   compatibility including `deck-default`, `steam-default`, `artwork: null`, and
   `.deck-profile-empty`.
+- Autodetect well-known local source locations without contacting a network,
+  reading a live frontend database, or hardcoding a person's path.
+- Aggregate files into games only from deterministic or explicit identity
+  evidence. Ambiguous relationships stay separate and visible as needing
+  attention.
+- Resolve display titles only from local, read-only metadata: Steam caches and
+  manifests, Playnite's safely readable game collection, and ES-DE gamelists.
+  A metadata failure keeps a labeled identity placeholder and never fails the
+  artwork library.
+- Correlate Playnite with Steam only from the reviewed Steam plugin identity
+  plus exact numeric storefront GameId. Never correlate by title similarity.
+- Treat source availability as device-local. A supported source absent from the
+  current machine is neutral information, not a broken-library state or a
+  reason to probe another device.
 
 ## Evidence on Hand
 
@@ -62,11 +77,13 @@ work must not fabricate or commit them.
 
 ## Product Principles
 
-1. Explain before acting.
-2. Treat ambiguity as a review queue, never an implicit merge.
-3. Make drafts and plans visibly different from canonical or live state.
-4. Preserve enough evidence for deterministic verification and recovery.
-5. Keep private data local and shared artifacts sanitized.
+1. Lead with games and artwork, not implementation details.
+2. Make the common path visual, direct, and near-zero configuration.
+3. Treat ambiguity as a lightweight affordance, never an implicit merge.
+4. Keep drafts and plans visibly different from canonical or live state.
+5. Preserve deterministic verification and recovery without making them the
+   product's front door.
+6. Keep private data local and shared artifacts sanitized.
 
 ## Accessibility & Inclusion
 

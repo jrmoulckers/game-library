@@ -59,6 +59,7 @@ func LoadSnapshot(cfg model.Config, reportPath string) (Snapshot, error) {
 		if err := report.ReadJSON(reportPath, &inv); err != nil {
 			return Snapshot{}, fmt.Errorf("load private inventory report: %w", err)
 		}
+
 		source = SourceReport
 		if parsed, err := time.Parse(time.RFC3339, inv.CreatedAt); err == nil {
 			scannedAt = parsed
@@ -92,6 +93,20 @@ func LoadSnapshot(cfg model.Config, reportPath string) (Snapshot, error) {
 		Roots:     roots,
 		index:     index,
 	}, nil
+}
+
+// NewSnapshot builds the same opaque media index as LoadSnapshot for an
+// inventory assembled incrementally by the local dashboard.
+func NewSnapshot(cfg model.Config, inv model.Inventory, source SnapshotSource, scannedAt time.Time) Snapshot {
+	roots := make(map[string]model.Root, len(cfg.Roots))
+	for _, root := range cfg.Roots {
+		roots[root.ID] = root
+	}
+	index := make(map[string]model.Observation, len(inv.Observations))
+	for _, observation := range inv.Observations {
+		index[ObservationID(observation.RootID, observation.RelativePath)] = observation
+	}
+	return Snapshot{Inventory: inv, Source: source, ScannedAt: scannedAt, Roots: roots, index: index}
 }
 
 // ObservationID derives a stable, opaque identifier for an observation from

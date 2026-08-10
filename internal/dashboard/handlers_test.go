@@ -301,7 +301,7 @@ func TestIndexAndStaticAssetServe(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("index status = %d", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "gamelib local dashboard") {
+	if !strings.Contains(rec.Body.String(), "gamelib artwork organizer") {
 		t.Fatalf("index body missing expected shell content: %s", rec.Body.String())
 	}
 

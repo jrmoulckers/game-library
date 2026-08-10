@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>gamelib local dashboard</title>
+  <title>gamelib artwork organizer</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -12,34 +12,25 @@
 
   <header class="app-header">
     <div class="app-header__title">
-      <h1>gamelib local dashboard <span class="app-header__version">v{{.ToolVersion}}</span></h1>
+      <h1>gamelib <span>artwork organizer</span> <span class="app-header__version">v{{.ToolVersion}}</span></h1>
     </div>
     <p class="app-header__scope">
-      Loopback-only workbench. Every save on this page is local-only: host
-      configuration, policy drafts, and profile drafts saved here never touch
-      the canonical catalog, generated bundles, Decky output, the Playnite
-      database, or any homelab/live frontend. This process trusts the local
-      OS user; other processes running as you share this trust boundary.
+      <span class="status-dot" aria-hidden="true"></span>
+      Read-only &mdash; no changes are made to your libraries.
     </p>
     <p class="app-header__context" id="workspace-context">Workspace context loads once JavaScript runs; see the first-run setup section for the CLI equivalent.</p>
   </header>
 
   <div class="app-shell">
-    <nav class="stage-rail" aria-label="Dashboard stages">
+    <nav class="stage-rail" aria-label="Organizer">
       <button type="button" class="stage-rail__toggle" id="stage-rail-toggle" aria-expanded="true" aria-controls="stage-rail-list">
-        <span aria-hidden="true">&#9776;</span> Stages
+        <span aria-hidden="true">&#9776;</span> Browse
       </button>
       <ul class="stage-rail__list" id="stage-rail-list">
-        <li><a href="#setup">First-run setup</a></li>
-        <li><a href="#overview">Overview</a></li>
-        <li><a href="#artwork">Artwork browser</a></li>
-        <li><a href="#identity">Identity queue</a></li>
-        <li><a href="#duplicates">Duplicates</a></li>
-        <li><a href="#policy">Policy</a></li>
-        <li><a href="#profiles">Profiles</a></li>
-        <li><a href="#plans">Plans &amp; gates</a></li>
-        <li><a href="#adapters">Adapters</a></li>
-        <li><a href="#recovery">Recovery</a></li>
+        <li><a href="#library" class="nav-primary" aria-current="page">Library</a></li>
+        <li><a href="#profile-library" class="nav-primary">Profiles</a></li>
+        <li><a href="#sources" class="nav-primary">Sources</a></li>
+        <li class="nav-separator"><a href="#advanced">Advanced</a></li>
       </ul>
     </nav>
 
@@ -47,6 +38,114 @@
       <div class="live-region" role="status" aria-live="polite" id="status-region"></div>
       <div class="live-region live-region--assertive" role="alert" aria-live="assertive" id="error-region"></div>
 
+      <section id="library" aria-labelledby="library-heading" class="organizer-view">
+        <header class="view-heading">
+          <div>
+            <h2 id="library-heading">Library</h2>
+            <p id="library-summary">Loading platforms and artwork&hellip;</p>
+          </div>
+          <button type="button" id="library-refresh">Rescan artwork</button>
+        </header>
+        <div id="scan-progress" class="scan-progress" role="status" aria-live="polite" hidden></div>
+        <noscript><p class="noscript-fallback">JavaScript is required for the visual organizer. All review tools remain available in Advanced, and the CLI remains fully supported.</p></noscript>
+        <div id="onboarding" class="onboarding" hidden>
+          <div>
+            <h3>We found places that may contain game artwork</h3>
+            <p>Choose the sources you want to browse. Nothing in these folders will be changed.</p>
+          </div>
+          <form id="detected-sources-form">
+            <div id="detected-sources-list" class="source-picker"></div>
+            <div class="button-row">
+              <button type="submit">Add selected sources</button>
+              <a href="#setup" class="button-link" data-advanced-target="setup">Add a folder manually</a>
+            </div>
+          </form>
+        </div>
+        <p id="library-grid-status" class="sr-only" role="status" aria-live="polite"></p>
+        <div id="platform-grid" class="platform-grid"></div>
+      </section>
+
+      <section id="platform-detail" aria-labelledby="platform-detail-heading" class="organizer-view" hidden>
+        <button type="button" class="back-button" id="platform-back">&larr; Library</button>
+        <header class="view-heading">
+          <div>
+            <h2 id="platform-detail-heading" tabindex="-1">Platform</h2>
+            <p id="platform-summary"></p>
+          </div>
+        </header>
+        <div id="platform-assets" class="platform-assets" hidden></div>
+        <form id="game-filters" class="organizer-toolbar">
+          <label for="game-search">Find a game</label>
+          <input id="game-search" type="search" placeholder="Search titles">
+          <label for="game-coverage">Artwork</label>
+          <select id="game-coverage">
+            <option value="">All games</option>
+            <option value="has-art">Has artwork</option>
+            <option value="missing">Missing roles</option>
+          </select>
+          <label for="game-role">Role</label>
+          <select id="game-role">
+            <option value="">Any role</option>
+          </select>
+          <label for="game-source">Source</label>
+          <select id="game-source">
+            <option value="">Any source</option>
+          </select>
+          <label for="game-sort">Sort</label>
+          <select id="game-sort">
+            <option value="title">Title</option>
+            <option value="coverage">Artwork coverage</option>
+          </select>
+        </form>
+        <p id="game-grid-status" class="sr-only" role="status" aria-live="polite"></p>
+        <div id="game-grid" class="game-grid"></div>
+      </section>
+
+      <section id="game-detail" aria-labelledby="game-detail-heading" class="organizer-view" hidden>
+        <button type="button" class="back-button" id="game-back">&larr; Platform</button>
+        <header class="game-header">
+          <div>
+            <p class="game-platform" id="game-platform"></p>
+            <h2 id="game-detail-heading" tabindex="-1">Game</h2>
+            <div id="game-identities" class="chip-row"></div>
+          </div>
+          <p id="game-profile-use" class="profile-use"></p>
+        </header>
+        <div id="missing-artwork" class="missing-panel"></div>
+        <div id="asset-gallery" class="asset-gallery"></div>
+      </section>
+
+      <section id="profile-library" aria-labelledby="profile-library-heading" class="organizer-view" hidden>
+        <header class="view-heading">
+          <div>
+            <h2 id="profile-library-heading">Profiles</h2>
+            <p>See which artwork each frontend will use and where a fallback appears.</p>
+          </div>
+        </header>
+        <div class="semantics-note">
+          <p><strong>Leave artwork unchanged</strong> means the profile does not replace artwork (<code>artwork: null</code>).</p>
+          <p><strong>Use Steam artwork</strong> means Steam's built-in artwork remains visible (the <code>.deck-profile-empty</code> marker).</p>
+        </div>
+        <div id="profile-card-grid" class="profile-grid"></div>
+      </section>
+
+      <section id="sources" aria-labelledby="sources-heading" class="organizer-view" hidden>
+        <header class="view-heading">
+          <div>
+            <h2 id="sources-heading">Sources</h2>
+            <p>Detected libraries and local artwork folders available to this organizer.</p>
+          </div>
+          <button type="button" id="sources-detect">Detect again</button>
+        </header>
+        <div id="source-card-grid" class="source-grid"></div>
+      </section>
+
+      <details id="advanced" class="advanced-area">
+        <summary>
+          <span>Advanced tools</span>
+          <small>Duplicates, identity review, plans, policy, adapters, and recovery</small>
+        </summary>
+        <div class="advanced-content">
       <section id="setup" aria-labelledby="setup-heading" class="stage-section">
         <h2 id="setup-heading">First-run setup</h2>
         <p>Configure the host-local roots this dashboard reads and validates. Saving writes only your local active configuration file.</p>
@@ -644,11 +743,30 @@
           </table>
         </div>
       </section>
+        </div>
+      </details>
     </main>
   </div>
 
+  <dialog id="artwork-preview" class="preview-dialog" aria-label="Artwork preview">
+    <button type="button" id="preview-close" class="dialog-close" aria-label="Close artwork preview">&times;</button>
+    <figure></figure>
+  </dialog>
+
+  <dialog id="profile-picker" class="profile-picker" aria-labelledby="profile-picker-heading">
+    <form method="dialog">
+      <h2 id="profile-picker-heading">Choose this <span data-role>artwork</span> for a profile</h2>
+      <label for="profile-picker-select">Profile</label>
+      <select id="profile-picker-select"></select>
+      <div class="button-row">
+        <button value="save">Use this artwork</button>
+        <button value="cancel" class="secondary-action">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <footer class="app-footer">
-    <p>gamelib is a plan-only local workbench: it never authorizes an apply, publish, prune, delete, or rollback operation from this page.</p>
+    <p>Local organizer &middot; Read-only library access &middot; No telemetry</p>
   </footer>
 
   <script type="module" src="/static/js/main.js"></script>

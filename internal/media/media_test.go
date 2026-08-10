@@ -25,6 +25,9 @@ func TestInferRole(t *testing.T) {
 	if actual := InferRole("playnite-extra", "games/id/Logo.png"); actual != "logo" {
 		t.Fatalf("Playnite logo role = %q", actual)
 	}
+	if actual := InferRole("playnite-library", "12345678-1234-1234-9234-1234567890ab.png"); actual != "cover" {
+		t.Fatalf("Playnite library role = %q", actual)
+	}
 	if actual := InferRole("esde-media", "n64/manuals/Game.pdf"); actual != "manual" {
 		t.Fatalf("ES-DE manual role = %q", actual)
 	}
@@ -63,6 +66,9 @@ func TestIdentityHints(t *testing.T) {
 	}
 	if actual := InferIdentityHint("playnite-extra", "games/12345678-1234-1234-9234-1234567890ab/Logo.png", ""); actual != "playnite:12345678-1234-1234-9234-1234567890ab" {
 		t.Fatalf("Playnite hint = %q", actual)
+	}
+	if actual := InferIdentityHint("playnite-library", "12345678-1234-1234-9234-1234567890ab.png", ""); actual != "playnite:12345678-1234-1234-9234-1234567890ab" {
+		t.Fatalf("Playnite file hint = %q", actual)
 	}
 	root := model.Root{Kind: "esde-media"}
 	system := InferSystem(root, "n64/covers/Example Game.png")
