@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/jrmoulckers/game-library/internal/config"
+	"github.com/jrmoulckers/game-library/internal/dashboard"
 	"github.com/jrmoulckers/game-library/internal/decky"
 	"github.com/jrmoulckers/game-library/internal/identity"
 	"github.com/jrmoulckers/game-library/internal/inventory"
@@ -13,6 +19,7 @@ import (
 	"github.com/jrmoulckers/game-library/internal/model"
 	"github.com/jrmoulckers/game-library/internal/profile"
 	"github.com/jrmoulckers/game-library/internal/report"
+	"github.com/jrmoulckers/game-library/internal/workspace"
 )
 
 func main() {
@@ -47,6 +54,8 @@ func run(args []string) error {
 		return runValidate(args[1:])
 	case "manifest":
 		return runManifest(args[1:])
+	case "serve":
+		return runServe(args[1:])
 	case "version":
 		fmt.Println(model.ToolVersion)
 		return nil
@@ -307,5 +316,70 @@ func twoFileFlags(name string, args []string, inputName string) (string, string,
 }
 
 func usageError() error {
-	return fmt.Errorf("usage: gamelib <inventory|report|duplicates|identity|import|profile|bundle|export|validate|manifest|version> ...")
+	return fmt.Errorf("usage: gamelib <inventory|report|duplicates|identity|import|profile|bundle|export|validate|manifest|serve|version> ...")
+}
+
+// newServeServer parses `gamelib serve` flags and constructs a bound
+// dashboard.Server without starting it, so both runServe and tests can
+// control the accept/shutdown lifecycle explicitly instead of blocking.
+func newServeServer(args []string) (*dashboard.Server, error) {
+	set := flag.NewFlagSet("serve", flag.ContinueOnError)
+	listen := set.String("listen", "127.0.0.1:8787", "loopback address to bind (127.0.0.1 or ::1 only)")
+	workspaceRoot := set.String("workspace", "", "override the host-local workspace directory (default: platform-local)")
+	configPath := set.String("config", "", "override the active configuration file path")
+	inventoryReport := set.String("inventory-report", "", "optional: review an existing private inventory report (from gamelib inventory scan --privacy private) instead of scanning the active configuration's roots on every request")
+	catalogRoot := set.String("catalog", "", "optional: canonical catalog root used for profile resolve/bundle previews and manifest analysis")
+	if err := set.Parse(args); err != nil {
+		return nil, err
+	}
+
+	root := *workspaceRoot
+	if root == "" {
+		var err error
+		root, err = workspace.DefaultRoot()
+		if err != nil {
+			return nil, err
+		}
+	}
+	paths := workspace.NewPaths(root)
+	if *configPath != "" {
+		paths.Config = *configPath
+	}
+
+	return dashboard.New(*listen, dashboard.Options{
+		Workspace:       paths,
+		InventoryReport: *inventoryReport,
+		CatalogRoot:     *catalogRoot,
+	})
+}
+
+func runServe(args []string) error {
+	srv, err := newServeServer(args)
+	if err != nil {
+		return err
+	}
+	defer srv.Close()
+
+	fmt.Fprintf(os.Stdout, "gamelib dashboard listening on http://%s (Ctrl+C to stop)\n", srv.Addr())
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve() }()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		return <-serveErr
+	case err := <-serveErr:
+		if err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	}
 }

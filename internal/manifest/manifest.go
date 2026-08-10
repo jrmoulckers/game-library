@@ -112,6 +112,23 @@ func VerifyFile(path, expected string) error {
 	return nil
 }
 
+// OperationIDFor recomputes the deterministic operation id NewPlan/BuildImport
+// would assign to kind/actions, without duplicating their private sorting
+// and hashing logic. It lets a caller (for example the dashboard's history
+// listing) verify that a persisted plan artifact's OperationID field still
+// matches its own Actions content — i.e. that the artifact has not been
+// tampered with since it was written — using only the plan's own recorded
+// fields, never a filesystem path.
+func OperationIDFor(kind string, actions []model.Action) (string, error) {
+	sorted := append([]model.Action(nil), actions...)
+	sortActions(sorted)
+	operationID, _, err := digestActions(sorted)
+	if err != nil {
+		return "", err
+	}
+	return kind + "-" + operationID[:16], nil
+}
+
 func NewPlan(kind string, actions []model.Action, warnings ...string) (model.Manifest, error) {
 	sortActions(actions)
 	operationID, sourceDigest, err := digestActions(actions)

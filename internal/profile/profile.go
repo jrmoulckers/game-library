@@ -283,18 +283,24 @@ func canonicalAssetPath(asset model.AssetSelection) string {
 	))
 }
 
+// verifyAsset opens path and hashes its content, reporting whether it
+// matches expected. Any I/O failure other than "does not exist" is reduced
+// to a generic message: the caller's Issues list — including from the
+// dashboard's profile-resolve preview endpoint — must never carry a raw
+// filesystem path (which os.PathError.Error() would otherwise embed)
+// toward an API response.
 func verifyAsset(path, expected string) (bool, string) {
 	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, "managed content is absent"
 		}
-		return false, err.Error()
+		return false, "managed content could not be read"
 	}
 	defer file.Close()
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
-		return false, err.Error()
+		return false, "managed content could not be read"
 	}
 	actual := hex.EncodeToString(hash.Sum(nil))
 	if actual != expected {

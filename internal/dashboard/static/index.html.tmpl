@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>gamelib local dashboard</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="app-header">
+    <div class="app-header__title">
+      <h1>gamelib local dashboard <span class="app-header__version">v{{.ToolVersion}}</span></h1>
+    </div>
+    <p class="app-header__scope">
+      Loopback-only workbench. Every save on this page is local-only: host
+      configuration, policy drafts, and profile drafts saved here never touch
+      the canonical catalog, generated bundles, Decky output, the Playnite
+      database, or any homelab/live frontend. This process trusts the local
+      OS user; other processes running as you share this trust boundary.
+    </p>
+    <p class="app-header__context" id="workspace-context">Workspace context loads once JavaScript runs; see the first-run setup section for the CLI equivalent.</p>
+  </header>
+
+  <div class="app-shell">
+    <nav class="stage-rail" aria-label="Dashboard stages">
+      <button type="button" class="stage-rail__toggle" id="stage-rail-toggle" aria-expanded="true" aria-controls="stage-rail-list">
+        <span aria-hidden="true">&#9776;</span> Stages
+      </button>
+      <ul class="stage-rail__list" id="stage-rail-list">
+        <li><a href="#setup">First-run setup</a></li>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#artwork">Artwork browser</a></li>
+        <li><a href="#identity">Identity queue</a></li>
+        <li><a href="#duplicates">Duplicates</a></li>
+        <li><a href="#policy">Policy</a></li>
+        <li><a href="#profiles">Profiles</a></li>
+        <li><a href="#plans">Plans &amp; gates</a></li>
+        <li><a href="#adapters">Adapters</a></li>
+        <li><a href="#recovery">Recovery</a></li>
+      </ul>
+    </nav>
+
+    <main id="main-content" class="stage-main" tabindex="-1">
+      <div class="live-region" role="status" aria-live="polite" id="status-region"></div>
+      <div class="live-region live-region--assertive" role="alert" aria-live="assertive" id="error-region"></div>
+
+      <section id="setup" aria-labelledby="setup-heading" class="stage-section">
+        <h2 id="setup-heading">First-run setup</h2>
+        <p>Configure the host-local roots this dashboard reads and validates. Saving writes only your local active configuration file.</p>
+        <p class="context-line">Active configuration file: <code id="setup-config-path">(loading&hellip;)</code></p>
+        <noscript><p class="noscript-fallback">JavaScript is required to edit configuration from this page. Hand-edit the active configuration JSON file directly, or use <code>gamelib manifest verify</code>/<code>gamelib validate</code> from the command line, then restart <code>gamelib serve</code>.</p></noscript>
+
+        <details open>
+          <summary>Roots (id, kind, path, system)</summary>
+          <div class="table-scroller" tabindex="0" role="region" aria-label="Configured roots editor table">
+            <table id="setup-roots-table">
+              <caption>Configured roots and their validation results</caption>
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Kind</th>
+                  <th scope="col">Path</th>
+                  <th scope="col">System</th>
+                  <th scope="col">Validation</th>
+                  <th scope="col">Remove</th>
+                </tr>
+              </thead>
+              <tbody id="setup-roots-body"></tbody>
+            </table>
+          </div>
+          <div class="button-row">
+            <button type="button" id="setup-add-root">Add root</button>
+            <button type="button" id="setup-validate-roots">Validate roots</button>
+          </div>
+          <p id="setup-validation-status" role="status"></p>
+        </details>
+
+        <form id="setup-form">
+          <fieldset>
+            <legend>Global policy default</legend>
+            <label for="setup-default-mode">Default retention mode</label>
+            <select id="setup-default-mode" name="defaultMode" required>
+              <option value="managed">managed</option>
+              <option value="tracked-external">tracked-external</option>
+              <option value="promote-on-approval">promote-on-approval</option>
+              <option value="quarantined">quarantined</option>
+            </select>
+          </fieldset>
+          <fieldset>
+            <legend>Local-only write boundary</legend>
+            <p>Saving this form writes only the host-local active configuration on this machine. It does not create, modify, or delete anything in a canonical catalog, a generated bundle, generated Decky output, the Playnite database, or a homelab/live frontend.</p>
+          </fieldset>
+          <button type="submit" id="setup-save">Save configuration</button>
+          <p id="setup-status" role="status"></p>
+        </form>
+      </section>
+
+      <section id="overview" aria-labelledby="overview-heading" class="stage-section">
+        <h2 id="overview-heading">Library overview</h2>
+        <p>Snapshot freshness, per-root totals, unresolved queues, and adapter readiness.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to load the overview. Use <code>gamelib inventory scan</code> and <code>gamelib report</code> from the command line instead.</p></noscript>
+
+        <div class="button-row">
+          <button type="button" id="overview-refresh">Refresh snapshot</button>
+        </div>
+        <p id="overview-freshness" role="status"></p>
+
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Per-root totals table">
+          <table id="overview-roots-table">
+            <caption>Per-root file, byte, and media totals with issue counts</caption>
+            <thead>
+              <tr>
+                <th scope="col">Root</th>
+                <th scope="col">Kind</th>
+                <th scope="col">System</th>
+                <th scope="col">Files</th>
+                <th scope="col">Bytes</th>
+                <th scope="col">Media</th>
+                <th scope="col">Images</th>
+                <th scope="col">Issues</th>
+              </tr>
+            </thead>
+            <tbody id="overview-roots-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Unresolved queues</h3>
+        <ul id="overview-queues" class="queue-list"></ul>
+
+        <h3>Duplicate summary</h3>
+        <dl id="overview-duplicates" class="summary-list"></dl>
+
+        <h3>Warnings and type mismatches</h3>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Validation issues table">
+          <table id="overview-issues-table">
+            <caption>Validation issues across configured roots</caption>
+            <thead>
+              <tr>
+                <th scope="col">Root</th>
+                <th scope="col">Path</th>
+                <th scope="col">Code</th>
+                <th scope="col">Message</th>
+              </tr>
+            </thead>
+            <tbody id="overview-issues-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Adapter readiness</h3>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Adapter readiness table">
+          <table id="overview-adapters-table">
+            <caption>Plan-only export adapter readiness</caption>
+            <thead>
+              <tr>
+                <th scope="col">Adapter</th>
+                <th scope="col">Plan-only</th>
+                <th scope="col">Destination configured</th>
+                <th scope="col">Input ready</th>
+              </tr>
+            </thead>
+            <tbody id="overview-adapters-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Artwork strip</h3>
+        <p>A small sample of currently observed artwork. Open the artwork browser below for the full paginated, filterable list.</p>
+        <ul id="overview-artwork-strip" class="thumb-strip"></ul>
+
+        <h3>Jump to</h3>
+        <ul class="jump-list">
+          <li><a href="#artwork">Artwork browser</a></li>
+          <li><a href="#identity">Identity queue</a></li>
+          <li><a href="#duplicates">Duplicates</a></li>
+          <li><a href="#plans">Plans &amp; gates</a></li>
+        </ul>
+      </section>
+
+      <section id="artwork" aria-labelledby="artwork-heading" class="stage-section">
+        <h2 id="artwork-heading">Artwork browser</h2>
+        <p>Server-paginated artwork and media observations. A thumbnail that fails to decode falls back to a labeled text row; nothing here relies on infinite/virtual scrolling.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to browse artwork from this page. Use <code>gamelib inventory scan</code> and inspect the resulting inventory report JSON instead.</p></noscript>
+
+        <form id="artwork-filters">
+          <fieldset>
+            <legend>Filters</legend>
+            <div class="field-grid">
+              <label for="filter-source">Source</label>
+              <input id="filter-source" name="source" type="text">
+              <label for="filter-system">System</label>
+              <input id="filter-system" name="system" type="text">
+              <label for="filter-identity">Identity</label>
+              <input id="filter-identity" name="identity" type="text">
+              <label for="filter-role">Role</label>
+              <input id="filter-role" name="role" type="text">
+              <label for="filter-dimensions">Dimensions (WxH)</label>
+              <input id="filter-dimensions" name="dimensions" type="text" placeholder="1920x1080">
+              <label for="filter-policy">Policy outcome</label>
+              <select id="filter-policy" name="policyOutcome">
+                <option value="">Any</option>
+                <option value="managed">managed</option>
+                <option value="tracked-external">tracked-external</option>
+                <option value="promote-on-approval">promote-on-approval</option>
+                <option value="quarantined">quarantined</option>
+              </select>
+              <label for="filter-theme">Theme</label>
+              <input id="filter-theme" name="theme" type="text">
+              <label for="filter-validation">Validation</label>
+              <select id="filter-validation" name="validation">
+                <option value="">Any</option>
+                <option value="issues">Has issues</option>
+                <option value="clean">Clean</option>
+              </select>
+            </div>
+            <div class="button-row">
+              <button type="submit">Apply filters</button>
+              <button type="button" id="artwork-reset">Reset filters</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <p id="artwork-summary" role="status"></p>
+
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Artwork observations table">
+          <table id="artwork-table">
+            <caption>Observed artwork and media files matching the current filters</caption>
+            <thead>
+              <tr>
+                <th scope="col">Preview</th>
+                <th scope="col">Identity</th>
+                <th scope="col">Source</th>
+                <th scope="col">System</th>
+                <th scope="col">Role</th>
+                <th scope="col">Dimensions</th>
+                <th scope="col">Policy outcome</th>
+                <th scope="col">Themes</th>
+                <th scope="col">State</th>
+              </tr>
+            </thead>
+            <tbody id="artwork-body"></tbody>
+          </table>
+        </div>
+
+        <nav class="pagination" aria-label="Artwork pagination">
+          <button type="button" id="artwork-prev">Previous page</button>
+          <span id="artwork-page-status" role="status"></span>
+          <button type="button" id="artwork-next">Next page</button>
+        </nav>
+      </section>
+
+      <section id="identity" aria-labelledby="identity-heading" class="stage-section">
+        <h2 id="identity-heading">Identity queue</h2>
+        <p>Deterministic identity proposals are shown separately from lower-confidence proposals and unmapped items. Nothing here is ever auto-merged: every item included in a Gate A review is a selection you make explicitly below.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to review identities from this page. Use <code>gamelib identity propose</code> from the command line instead.</p></noscript>
+
+        <h3>Deterministic proposals</h3>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Deterministic identity proposals table">
+          <table id="identity-deterministic-table">
+            <caption>Observations with a single, high-confidence identity proposal</caption>
+            <thead>
+              <tr>
+                <th scope="col">Reviewed</th>
+                <th scope="col">Path</th>
+                <th scope="col">Proposed canonical ID</th>
+                <th scope="col">Confidence</th>
+                <th scope="col">Evidence</th>
+              </tr>
+            </thead>
+            <tbody id="identity-deterministic-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Proposals needing review, and unmapped items</h3>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Identity items needing review table">
+          <table id="identity-review-table">
+            <caption>Lower-confidence proposals and items with no proposal at all; conflicts are never auto-resolved</caption>
+            <thead>
+              <tr>
+                <th scope="col">Reviewed</th>
+                <th scope="col">Path</th>
+                <th scope="col">Proposed canonical ID</th>
+                <th scope="col">Confidence</th>
+                <th scope="col">Evidence / reason</th>
+              </tr>
+            </thead>
+            <tbody id="identity-review-body"></tbody>
+          </table>
+        </div>
+
+        <form id="gate-a-form">
+          <fieldset>
+            <legend>Create Gate A review (inventory/identity)</legend>
+            <p id="gate-a-selection-summary" role="status">0 of 0 listed items marked reviewed.</p>
+            <label for="gate-a-reviewer">Reviewer (optional)</label>
+            <input id="gate-a-reviewer" name="reviewer" type="text">
+            <label for="gate-a-notes">Notes (optional)</label>
+            <textarea id="gate-a-notes" name="notes"></textarea>
+            <button type="submit" id="gate-a-submit" disabled>Mark every listed item reviewed to create a Gate A review</button>
+          </fieldset>
+        </form>
+        <p id="gate-a-status" role="status"></p>
+      </section>
+
+      <section id="duplicates" aria-labelledby="duplicates-heading" class="stage-section">
+        <h2 id="duplicates-heading">Duplicates</h2>
+        <p>Exact content-hash duplicate groups, classified as a canonical opportunity, an expected generated/export copy, or needing review. This page has no delete control.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to review duplicates from this page. Use <code>gamelib duplicates scan</code> from the command line instead.</p></noscript>
+
+        <p id="duplicates-summary" role="status"></p>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Duplicate groups table">
+          <table id="duplicates-table">
+            <caption>Exact SHA-256 duplicate groups across configured roots</caption>
+            <thead>
+              <tr>
+                <th scope="col">SHA-256</th>
+                <th scope="col">Size</th>
+                <th scope="col">Classification</th>
+                <th scope="col">Explanation</th>
+                <th scope="col">Occurrences</th>
+              </tr>
+            </thead>
+            <tbody id="duplicates-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="policy" aria-labelledby="policy-heading" class="stage-section">
+        <h2 id="policy-heading">Policy</h2>
+        <p>Author a local policy draft. Saving here never promotes anything to the active/canonical policy; promotion remains a separate, explicit future workflow.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to edit the policy draft from this page. Hand-edit a policy JSON file and use <code>gamelib validate</code> instead.</p></noscript>
+
+        <h3>Active policy</h3>
+        <dl id="policy-active-summary" class="summary-list"></dl>
+
+        <form id="policy-form">
+          <fieldset>
+            <legend>Draft default mode</legend>
+            <label for="policy-default-mode">Default retention mode</label>
+            <select id="policy-default-mode" name="default">
+              <option value="managed">managed</option>
+              <option value="tracked-external">tracked-external</option>
+              <option value="promote-on-approval">promote-on-approval</option>
+              <option value="quarantined">quarantined</option>
+            </select>
+          </fieldset>
+
+          <fieldset>
+            <legend>Rules (evaluated by precedence; the single highest-scoring matching rule wins)</legend>
+            <p class="precedence-note">Precedence weights: assetSha256&nbsp;8 &gt; role&nbsp;4 &gt; system&nbsp;2 &gt; source&nbsp;1 &gt; global default&nbsp;0.</p>
+            <div class="table-scroller" tabindex="0" role="region" aria-label="Policy rules editor table">
+              <table id="policy-rules-table">
+                <caption>Draft policy rules</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Source</th>
+                    <th scope="col">System</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Asset SHA-256</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col">Remove</th>
+                  </tr>
+                </thead>
+                <tbody id="policy-rules-body"></tbody>
+              </table>
+            </div>
+            <button type="button" id="policy-add-rule">Add rule</button>
+          </fieldset>
+
+          <div class="button-row">
+            <button type="submit" id="policy-save">Save policy draft</button>
+            <button type="button" id="policy-preview">Preview impact</button>
+          </div>
+          <p id="policy-status" role="status"></p>
+        </form>
+
+        <h3>Impact preview</h3>
+        <p id="policy-impact-summary" role="status"></p>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Policy impact preview table">
+          <table id="policy-impact-table">
+            <caption>Resolved retention mode per observation for the previewed policy</caption>
+            <thead>
+              <tr>
+                <th scope="col">Path</th>
+                <th scope="col">Resolved mode</th>
+                <th scope="col">Winning rule</th>
+              </tr>
+            </thead>
+            <tbody id="policy-impact-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="profiles" aria-labelledby="profiles-heading" class="stage-section">
+        <h2 id="profiles-heading">Profiles</h2>
+        <p>List, create, and edit local profile drafts. Saving here never writes a canonical profile and never publishes a live frontend.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to edit profile drafts from this page. Hand-edit a profile JSON file and use <code>gamelib profile resolve</code>/<code>gamelib validate</code> instead.</p></noscript>
+
+        <h3>Saved profile drafts</h3>
+        <table id="profiles-list-table">
+          <caption>Saved profile drafts</caption>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">Theme</th>
+              <th scope="col">Open</th>
+            </tr>
+          </thead>
+          <tbody id="profiles-list-body"></tbody>
+        </table>
+
+        <form id="profiles-select-form">
+          <label for="profiles-id-input">Profile id (create new or open an existing one)</label>
+          <input id="profiles-id-input" name="id" type="text" required>
+          <button type="submit">Load or start draft</button>
+        </form>
+
+        <form id="profile-editor-form" hidden>
+          <fieldset>
+            <legend>Profile draft: <span id="profile-editor-id"></span></legend>
+            <label for="profile-name">Name</label>
+            <input id="profile-name" name="name" type="text" required>
+            <label for="profile-description">Description</label>
+            <textarea id="profile-description" name="description"></textarea>
+            <label for="profile-theme">Theme</label>
+            <select id="profile-theme" name="theme"><option value="">(none)</option></select>
+          </fieldset>
+          <fieldset>
+            <legend>Games</legend>
+            <p>JSON array matching the profile schema's <code>games</code> field: each entry sets an id, optional identities/retro target, and an assets map keyed by role to <code>{sha256, extension, variant}</code>.</p>
+            <label for="profile-games-json">Games JSON</label>
+            <textarea id="profile-games-json" name="gamesJson" rows="10"></textarea>
+            <p id="profile-games-error" role="alert"></p>
+          </fieldset>
+          <fieldset>
+            <legend>Mods</legend>
+            <p>JSON array of <code>{game, set}</code> entries.</p>
+            <label for="profile-mods-json">Mods JSON</label>
+            <textarea id="profile-mods-json" name="modsJson" rows="4"></textarea>
+            <p id="profile-mods-error" role="alert"></p>
+          </fieldset>
+          <button type="submit">Save profile draft</button>
+          <p id="profile-editor-status" role="status"></p>
+        </form>
+
+        <h3>Closure preview</h3>
+        <button type="button" id="profile-resolve-button" disabled>Preview resolve against the configured catalog root</button>
+        <div id="profile-resolve-result"></div>
+
+        <h3>Adapter export preview</h3>
+        <form id="profile-export-form" hidden>
+          <label for="profile-export-adapter">Adapter</label>
+          <select id="profile-export-adapter" name="adapter">
+            <option value="steam">steam</option>
+            <option value="playnite">playnite</option>
+            <option value="decky">decky</option>
+            <option value="esde">esde</option>
+            <option value="romm">romm</option>
+          </select>
+          <button type="submit">Preview export</button>
+        </form>
+        <div id="profile-export-result"></div>
+      </section>
+
+      <section id="plans" aria-labelledby="plans-heading" class="stage-section">
+        <h2 id="plans-heading">Plans &amp; gates</h2>
+        <p>Generate import/bundle/export plans, analyze them exactly, and record immutable Gate A/B/C reviews.</p>
+        <p class="apply-unavailable-banner"><strong>Apply is unavailable.</strong> No control on this page, and no HTTP endpoint on this server, ever executes, publishes, prunes, deletes, or rolls back a plan.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to generate and analyze plans from this page. Use <code>gamelib import</code>, <code>gamelib bundle</code>, <code>gamelib export</code>, and <code>gamelib manifest</code> from the command line instead.</p></noscript>
+
+        <h3>Generate a plan</h3>
+        <div class="button-row">
+          <button type="button" id="plan-generate-import">Generate import plan</button>
+        </div>
+        <div class="button-row">
+          <label for="plan-bundle-profile">Profile id for bundle plan</label>
+          <input id="plan-bundle-profile" type="text">
+          <button type="button" id="plan-generate-bundle">Generate bundle plan</button>
+        </div>
+        <div class="button-row">
+          <label for="plan-export-profile">Profile id for export plan</label>
+          <input id="plan-export-profile" type="text">
+          <label for="plan-export-adapter">Adapter</label>
+          <select id="plan-export-adapter">
+            <option value="steam">steam</option>
+            <option value="playnite">playnite</option>
+            <option value="decky">decky</option>
+            <option value="esde">esde</option>
+            <option value="romm">romm</option>
+          </select>
+          <button type="button" id="plan-generate-export">Generate export plan</button>
+        </div>
+        <p id="plan-generate-status" role="status"></p>
+
+        <h3>Current plan</h3>
+        <p id="plan-current-summary">No plan generated yet in this session.</p>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Plan actions table">
+          <table id="plan-actions-table">
+            <caption>Actions in the current plan, with reasons, hashes, and byte counts</caption>
+            <thead>
+              <tr>
+                <th scope="col">Action</th>
+                <th scope="col">Source</th>
+                <th scope="col">Destination</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Source SHA-256</th>
+                <th scope="col">Bytes</th>
+              </tr>
+            </thead>
+            <tbody id="plan-actions-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Manifest analysis (Gate C evidence)</h3>
+        <button type="button" id="plan-analyze-button" disabled>Analyze current plan</button>
+        <p id="plan-analysis-summary" role="status"></p>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Manifest analysis effects table">
+          <table id="plan-analysis-table">
+            <caption>Effect, conflict, and current-destination analysis per action</caption>
+            <thead>
+              <tr>
+                <th scope="col">Action</th>
+                <th scope="col">Effect</th>
+                <th scope="col">Conflict</th>
+                <th scope="col">Current destination</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody id="plan-analysis-body"></tbody>
+          </table>
+        </div>
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Destination free-space sufficiency table">
+          <table id="plan-space-table">
+            <caption>Destination free-space sufficiency</caption>
+            <thead>
+              <tr>
+                <th scope="col">Root</th>
+                <th scope="col">Needed bytes</th>
+                <th scope="col">Available bytes</th>
+                <th scope="col">Sufficient</th>
+              </tr>
+            </thead>
+            <tbody id="plan-space-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Gate stepper</h3>
+        <ol class="gate-stepper">
+          <li>
+            <form id="gate-b-form">
+              <fieldset>
+                <legend>Gate B &mdash; policy/profile/adapter review</legend>
+                <label for="gate-b-gate-a-id">Gate A review id</label>
+                <input id="gate-b-gate-a-id" type="text" required>
+                <label for="gate-b-policy-digest">Policy digest</label>
+                <input id="gate-b-policy-digest" type="text" required>
+                <label for="gate-b-profile-digest">Profile digest (optional)</label>
+                <input id="gate-b-profile-digest" type="text">
+                <label for="gate-b-export-digest">Export plan digest (optional)</label>
+                <input id="gate-b-export-digest" type="text">
+                <label for="gate-b-reviewer">Reviewer</label>
+                <input id="gate-b-reviewer" type="text">
+                <label for="gate-b-notes">Notes</label>
+                <textarea id="gate-b-notes"></textarea>
+                <button type="submit">Create Gate B review</button>
+              </fieldset>
+            </form>
+            <p id="gate-b-status" role="status"></p>
+          </li>
+          <li>
+            <form id="gate-c-form">
+              <fieldset>
+                <legend>Gate C &mdash; manifest/hash/space/backup/rollback review (non-executable)</legend>
+                <label for="gate-c-gate-b-id">Gate B review id</label>
+                <input id="gate-c-gate-b-id" type="text" required>
+                <label for="gate-c-rollback-plan">Rollback plan (text)</label>
+                <textarea id="gate-c-rollback-plan"></textarea>
+                <label for="gate-c-reviewer">Reviewer</label>
+                <input id="gate-c-reviewer" type="text">
+                <label for="gate-c-notes">Notes</label>
+                <textarea id="gate-c-notes"></textarea>
+                <button type="submit" id="gate-c-submit" disabled>Analyze a plan above to create a Gate C review</button>
+              </fieldset>
+            </form>
+            <p id="gate-c-status" role="status"></p>
+            <p class="apply-unavailable-banner">This review always records <code>executable: false</code>. It is the final record; there is no apply step after it.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="adapters" aria-labelledby="adapters-heading" class="stage-section">
+        <h2 id="adapters-heading">Adapters</h2>
+        <p>Every adapter below is plan-only: this dashboard can preview and export a plan, but never publishes to a live frontend.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to load adapter status from this page. Use <code>gamelib export plan</code> from the command line instead.</p></noscript>
+
+        <table id="adapters-table">
+          <caption>Frontend adapter readiness (every adapter is plan-only)</caption>
+          <thead>
+            <tr>
+              <th scope="col">Adapter</th>
+              <th scope="col">Plan-only</th>
+              <th scope="col">Destination configured</th>
+              <th scope="col">Input ready</th>
+            </tr>
+          </thead>
+          <tbody id="adapters-body"></tbody>
+        </table>
+
+        <dl class="adapter-notes">
+          <dt>Steam</dt>
+          <dd>Plan-only grid-artwork copy preview; no Steam client write-back exists.</dd>
+          <dt>Playnite</dt>
+          <dd>Read-only sidecar preview: this repository never writes to the Playnite database.</dd>
+          <dt>Decky</dt>
+          <dd>Produces a Decky v1 profile preview that preserves <code>deck-default</code>, <code>steam-default</code>, explicit <code>artwork</code> (never omitted; <code>null</code> only for a profile with no artwork concept), and <code>.deck-profile-empty</code> marker semantics exactly.</dd>
+          <dt>ES-DE</dt>
+          <dd>Plan-only export preview for ES-DE&ndash;compatible destinations.</dd>
+          <dt>RomM</dt>
+          <dd>Plan-only export preview; homelab live publication of RomM data remains outside this repository.</dd>
+        </dl>
+      </section>
+
+      <section id="recovery" aria-labelledby="recovery-heading" class="stage-section">
+        <h2 id="recovery-heading">Recovery</h2>
+        <p>Immutable local plan and gate-review history only. There is no applied or rolled-back history, and no prune, delete, or apply control anywhere on this page.</p>
+        <noscript><p class="noscript-fallback">JavaScript is required to load local artifact history from this page. Inspect the workspace artifacts directory's JSON files directly instead.</p></noscript>
+
+        <div class="table-scroller" tabindex="0" role="region" aria-label="Local artifact history table">
+          <table id="recovery-table">
+            <caption>Immutable local plan and gate-review artifacts, with digest/integrity status</caption>
+            <thead>
+              <tr>
+                <th scope="col">Type</th>
+                <th scope="col">ID</th>
+                <th scope="col">Kind</th>
+                <th scope="col">Digest</th>
+                <th scope="col">Created</th>
+                <th scope="col">Integrity verified</th>
+              </tr>
+            </thead>
+            <tbody id="recovery-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="app-footer">
+    <p>gamelib is a plan-only local workbench: it never authorizes an apply, publish, prune, delete, or rollback operation from this page.</p>
+  </footer>
+
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
