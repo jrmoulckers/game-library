@@ -170,28 +170,28 @@ it here; pin to a commit SHA when exact wording matters.
 
 Engineering rules are cited by `ENG-*` ID and are not restated here. Resolve any
 ID against
-[`principles/index.json`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/index.json).
+[`principles/index.json`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/index.json).
 The Go-specific technique for satisfying them is
-[practices/go.md](https://github.com/jrmoulckers/engineering/blob/v0.2.0/practices/go.md);
+[practices/go.md](https://github.com/jrmoulckers/engineering/blob/v0.2.2/practices/go.md);
 this repository has no npm surface, so the `@jrmoulckers/*` presets do not apply.
 
 The IDs that bear most directly on this repository:
 
 | ID | Where it shows up here |
 | --- | --- |
-| [`ENG-ARCH-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/architecture/boundaries-and-contracts.md#minimal-directed-boundaries) | `internal/**` is the boundary; `cmd/gamelib` holds only `main` and flag parsing |
-| [`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts) | [`schemas/v1/`](schemas/v1/README.md) is the versioned published contract |
-| [`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/architecture/boundaries-and-contracts.md#durable-decisions) | [`docs/architecture/decisions/`](docs/architecture/decisions/) |
-| [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/platforms/integration-boundaries.md#thin-typed-adapters) | [`docs/architecture/adapters.md`](docs/architecture/adapters.md) |
-| [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/security-and-privacy.md#secret-lifecycle) | symbolic roots, sanitized reports, and the CI residue check |
-| [`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/testing.md#distinct-static-signals) | the independent CI signals below |
-| [`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/testing.md#positive-and-negative-polarity) | paired accept/reject fixtures in `internal/schema` and the validator tests |
-| [`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/testing.md#executable-procedures) | the documented no-residue rule is executed by CI, not asserted in prose |
+| [`ENG-ARCH-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/architecture/boundaries-and-contracts.md#minimal-directed-boundaries) | `internal/**` is the boundary; `cmd/gamelib` holds only `main` and flag parsing |
+| [`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts) | [`schemas/v1/`](schemas/v1/README.md) is the versioned published contract |
+| [`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/architecture/boundaries-and-contracts.md#durable-decisions) | [`docs/architecture/decisions/`](docs/architecture/decisions/) |
+| [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/platforms/integration-boundaries.md#thin-typed-adapters) | [`docs/architecture/adapters.md`](docs/architecture/adapters.md) |
+| [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/assurance/security-and-privacy.md#secret-lifecycle) | symbolic roots, sanitized reports, and the CI residue check |
+| [`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/assurance/testing.md#distinct-static-signals) | the independent CI signals below |
+| [`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/assurance/testing.md#positive-and-negative-polarity) | paired accept/reject fixtures in `internal/schema` and the validator tests |
+| [`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/assurance/testing.md#executable-procedures) | the documented no-residue rule is executed by CI, not asserted in prose |
 
 ### Verifying a change
 
 Each signal reports independently and blocks the merge
-([`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/testing.md#distinct-static-signals)):
+([`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/assurance/testing.md#distinct-static-signals)):
 
 ```
 test -z "$(gofmt -l .)"   # format
@@ -202,13 +202,13 @@ go build ./...            # build
 ```
 
 The lint configuration is owned by
-[jrmoulckers/engineering](https://github.com/jrmoulckers/engineering/blob/v0.2.0/configs/golangci.yml)
+[jrmoulckers/engineering](https://github.com/jrmoulckers/engineering/blob/v0.2.2/configs/golangci.yml)
 and is **not** copied into this repository. golangci-lint has no config
 inheritance, so `scripts/fetch-engineering-config.sh` materializes it at a pinned
 tag into a gitignored `.golangci.yml`:
 
 ```
-scripts/fetch-engineering-config.sh          # defaults to v0.2.0
+scripts/fetch-engineering-config.sh          # defaults to v0.2.2
 scripts/fetch-engineering-config.sh main     # or any ref
 golangci-lint run
 ```

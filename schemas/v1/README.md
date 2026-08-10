@@ -34,12 +34,12 @@ expected to be a live, dereferenceable URL.
 
 These schemas are this repository's published contract, so they are versioned and
 evolve additively until a declared breaking boundary
-([`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts),
-[`ENG-API-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/platforms/api-backend.md#typed-versioned-apis)):
+([`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts),
+[`ENG-API-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/platforms/api-backend.md#typed-versioned-apis)):
 a breaking change gets a new `schemas/vN/` directory rather than an edit in
 place. `internal/schema` validates both accepted and rejected fixtures against
 the committed files
-([`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/testing.md#positive-and-negative-polarity)).
+([`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.2.2/principles/assurance/testing.md#positive-and-negative-polarity)).
 
 Repo-specific conventions:
 
