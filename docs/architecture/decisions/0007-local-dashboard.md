@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Accepted. The dashboard-shape decisions below (the Advanced disclosure, Gate
+A/B/C, and the review/policy/planning/adapter/recovery surfaces) are superseded
+by [ADR-0008](0008-organizer-only-dashboard.md). Everything else — loopback-only
+binding, request hardening, thin handlers over Go contracts, source detection,
+title resolution, and the Playnite-to-Steam join — remains in force.
 
 ## Context
 

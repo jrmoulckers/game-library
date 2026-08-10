@@ -13,7 +13,8 @@ new ADR that supersedes the old one.
 | [0004](0004-identity-and-mapping-strategy.md) | Identity model and Playnite as adapter-only mapping | Accepted |
 | [0005](0005-bundle-generation-and-rollback.md) | Immutable generated bundles with lock manifests and rollback | Accepted |
 | [0006](0006-adapter-boundaries-and-ownership.md) | Adapter boundaries, staging-first integration, homelab ownership | Accepted |
-| [0007](0007-local-dashboard.md) | Local dashboard is a plan-only Go web surface | Accepted |
+| [0007](0007-local-dashboard.md) | Local dashboard is a plan-only Go web surface | Partly superseded by 0008 |
+| [0008](0008-organizer-only-dashboard.md) | The dashboard is an artwork organizer, not a review console | Accepted |
 
 See also the narrative docs one level up:
 

@@ -8,8 +8,8 @@ The dashboard follows the familiar organizer canon established by Playnite,
 LaunchBox, and Jellyfin: a compact dark navigation shell opens onto a bright,
 artwork-dominant collection canvas. Platform mosaics, cover grids, and
 role-specific previews make the library recognizable before any metadata is
-read. Advanced evidence tools retain their precision but recede behind one
-disclosure.
+read. The interface holds the organizer and nothing else; evidence tooling lives
+in the CLI.
 
 ## Color
 
@@ -25,9 +25,9 @@ disclosure.
 ## Typography
 
 Use the platform system sans stack for all interface copy and controls.
-Monospace is limited to paths, hashes, and technical identifiers inside
-Advanced. Large, tightly tracked route headings contrast with compact game
-labels and readable metadata chips.
+Monospace is limited to paths, hashes, and technical identifiers, which appear
+mainly in source-folder setup and media facts. Large, tightly tracked route
+headings contrast with compact game labels and readable metadata chips.
 
 ## Layout
 
@@ -53,7 +53,7 @@ stack without changing reading or focus order.
   identity placeholder rather than an error or invented name.
 - Supported sources absent from the current device use neutral gray status and
   explanatory copy. They never create empty platform cards or red warnings.
-- Every Advanced table keeps its caption, labeled headers, and empty row.
+- Every table keeps its caption, labeled headers, and empty row.
 - Long or optional detail uses native `details`/`summary`.
 - Loading, success, conflict, empty, disabled, and error states remain visible
   in persistent status regions rather than transient toast-only feedback.

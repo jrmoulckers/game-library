@@ -11,7 +11,8 @@ web
 The primary user is the local owner of a private game-artwork library. They use
 the dashboard on desktop and Steam Deck browsers to browse platforms and games,
 see every artwork role, understand presentation profiles, fill coverage gaps,
-and connect local sources without learning repository-specific vocabulary.
+gather artwork into profiles for their other devices, and connect local sources
+without learning repository-specific vocabulary.
 
 ## Product Purpose
 
@@ -24,18 +25,18 @@ profiles and frontends use each asset.
 ## Positioning
 
 The product is an artwork-first local organizer over deterministic Go contracts.
-It keeps recovery and review tools available in Advanced, but never silently
-fuzzy-merges identities, deletes by hash, promotes assets, or mutates a live
-frontend.
+The dashboard shows games, artwork, and profiles; it never silently fuzzy-merges
+identities, deletes by hash, promotes assets, or mutates a live frontend.
+Deterministic verification, duplicate classification, and planning stay
+available as `gamelib` CLI commands rather than shaping the interface.
 
 ## Operating Context
 
 The dashboard runs from the `gamelib` binary on the user's machine, reads
 host-local symbolic-root configuration and private inventory data, and works
 with the separate private GamingProfiles tree. It produces validated local
-drafts and immutable plan/review documents. Homelab deployment, Syncthing,
-CT601, Cartridge, and device-local frontend publication remain outside this
-repository.
+profile drafts. Homelab deployment, Syncthing, CT601, Cartridge, and
+device-local frontend publication remain outside this repository.
 
 ## Capabilities and Constraints
 
@@ -44,8 +45,8 @@ repository.
 - Reuse the existing Go inventory, identity, policy, profile, manifest, media,
   Decky, report, and schema behavior rather than reproducing business rules in
   browser code.
-- Atomically write only host-local configuration and explicit local policy or
-  profile drafts. Create immutable plan and gate-review records.
+- Atomically write only host-local configuration and explicit local profile
+  drafts.
 - Keep canonical catalog, bundle, generated Decky, Playnite database, live
   frontend, and homelab mutation unavailable.
 - Preserve Windows and Linux behavior, symbolic/root-relative paths,
@@ -80,14 +81,16 @@ work must not fabricate or commit them.
 1. Lead with games and artwork, not implementation details.
 2. Make the common path visual, direct, and near-zero configuration.
 3. Treat ambiguity as a lightweight affordance, never an implicit merge.
-4. Keep drafts and plans visibly different from canonical or live state.
-5. Preserve deterministic verification and recovery without making them the
-   product's front door.
+4. Keep drafts visibly different from canonical or live state.
+5. Preserve deterministic verification and recovery in the CLI without making
+   them the product's front door.
 6. Keep private data local and shared artifacts sanitized.
+7. Stay fast on a real library. Artwork browsing and search must not degrade as
+   the collection grows.
 
 ## Accessibility & Inclusion
 
 Target WCAG 2.2 AA. Core workflows must work with keyboard, screen readers,
 zoom/reflow, reduced motion, touch, and Steam Deck gamepad-style browser input.
-Artwork, confidence, retention, validation, and gate state must never rely on
+Artwork, confidence, retention, and validation state must never rely on
 color or visual recognition alone.
