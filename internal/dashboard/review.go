@@ -106,6 +106,7 @@ func (h *handlers) organizerCatalog(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	h.metadata.start(cfg.Roots, false)
 	snapshot, ok := h.loadOrganizerSnapshot(w, cfg)
 	if !ok {
 		return
@@ -114,7 +115,12 @@ func (h *handlers) organizerCatalog(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, organizer.Build(snapshot, profiles))
+	titles, metadataStatus := h.metadata.current()
+	view := organizer.BuildWithMetadata(snapshot, profiles, titles)
+	writeJSON(w, http.StatusOK, struct {
+		organizer.Catalog
+		MetadataStatus string `json:"metadataStatus"`
+	}{Catalog: view, MetadataStatus: metadataStatus})
 }
 
 func (h *handlers) organizerGame(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +130,7 @@ func (h *handlers) organizerGame(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	h.metadata.start(cfg.Roots, false)
 	snapshot, ok := h.loadOrganizerSnapshot(w, cfg)
 	if !ok {
 		return
@@ -133,7 +140,8 @@ func (h *handlers) organizerGame(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	game, found := organizer.FindGame(organizer.Build(snapshot, profiles), r.PathValue("id"))
+	titles, _ := h.metadata.current()
+	game, found := organizer.FindGame(organizer.BuildWithMetadata(snapshot, profiles, titles), r.PathValue("id"))
 	if !found {
 		status := h.scans.snapshot().Status
 		if status == "scanning" || status == "cancelling" || status == "idle" {
@@ -185,9 +193,15 @@ func (h *handlers) detectSources(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to locate the local home directory")
 		return
 	}
+	detected := source.Detect(source.Environment{GOOS: runtime.GOOS, HomeDir: home}, cfg.Roots)
+	h.metadata.start(cfg.Roots, false)
+	metadataCatalog, metadataStatus := h.metadata.current()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"sources":       source.Detect(source.Environment{GOOS: runtime.GOOS, HomeDir: home}, cfg.Roots),
-		"caseSensitive": runtime.GOOS != "windows",
+		"sources":             detected,
+		"supported":           source.SupportedStates(detected, cfg.Roots),
+		"caseSensitive":       runtime.GOOS != "windows",
+		"metadataStatus":      metadataStatus,
+		"metadataDiagnostics": metadataCatalog.Diagnostics,
 	})
 }
 

@@ -57,6 +57,15 @@ concurrent writes.
 - Allow an organizer scan to process roots incrementally and publish partial
   in-memory snapshots. The legacy review refresh remains synchronous and
   compatible; neither path persists private inventory.
+- Resolve organizer titles through a process-memory, read-only metadata cache.
+  Steam appinfo/manifests/shortcuts, Playnite LiteDB v4 data, and ES-DE
+  gamelists are optional providers; malformed, busy, unsupported, or changing
+  metadata degrades to placeholders without failing inventory.
+- Permit a Playnite-to-Steam entity join only when a reviewed Playnite Steam
+  plugin ID and numeric storefront GameId identify the exact Steam AppID.
+  Titles never create identity edges.
+- Model supported source absence as local-device state. The dashboard does not
+  ping, SSH, mount, or otherwise inspect another device or remote service.
 
 ## Consequences
 

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/jrmoulckers/game-library/internal/model"
@@ -88,9 +89,27 @@ func TestPathKeyRespectsFilesystemCaseRules(t *testing.T) {
 	if pathKey("Artwork", "linux") == pathKey("artwork", "linux") {
 		t.Fatal("Linux path keys must preserve case")
 	}
+
 	if pathKey("Artwork", "windows") != pathKey("artwork", "windows") {
 		t.Fatal("Windows path keys must fold case")
 	}
+
+}
+
+func TestSupportedStatesTreatsAbsentRetrodeckAsNeutral(t *testing.T) {
+	states := SupportedStates([]Candidate{{Kind: "steam-grid"}}, nil)
+	for _, state := range states {
+		if state.Kind == "steam-grid" {
+			t.Fatal("present Steam source should not get an absent state")
+		}
+		if state.Kind == "esde-media" {
+			if state.Status != "not-on-this-device" || !strings.Contains(state.Message, "Not on this device") {
+				t.Fatalf("RetroDECK state = %+v", state)
+			}
+			return
+		}
+	}
+	t.Fatal("expected neutral RetroDECK state")
 }
 
 func TestDetectUsesCurrentPlatformDefaults(t *testing.T) {

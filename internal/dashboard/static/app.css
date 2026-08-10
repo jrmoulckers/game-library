@@ -442,6 +442,12 @@ body {
   border-color: #aad8c5;
 }
 
+.chip--neutral {
+  color: #4b5563;
+  background: #eef0f3;
+  border-color: #cfd4dc;
+}
+
 .missing-panel {
   margin-bottom: 1.75rem;
   padding: 1rem 1.25rem;

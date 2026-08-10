@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jrmoulckers/game-library/internal/metadata"
 	"github.com/jrmoulckers/game-library/internal/model"
 	"github.com/jrmoulckers/game-library/internal/review"
 )
@@ -74,6 +75,7 @@ type Game struct {
 	Fallbacks      []Fallback        `json:"fallbacks,omitempty"`
 	NeedsAttention bool              `json:"needsAttention"`
 	RawTitle       string            `json:"rawTitle,omitempty"`
+	Store          string            `json:"store,omitempty"`
 }
 
 type Fallback struct {
@@ -134,6 +136,10 @@ func CleanRetroTitle(stem string) string {
 }
 
 func Build(snapshot review.Snapshot, profiles []model.Profile) Catalog {
+	return BuildWithMetadata(snapshot, profiles, metadata.NewCatalog())
+}
+
+func BuildWithMetadata(snapshot review.Snapshot, profiles []model.Profile, titles metadata.Catalog) Catalog {
 	hashCopies := make(map[string]int)
 	hashProfiles := make(map[string]map[string]struct{})
 	for _, observation := range snapshot.Inventory.Observations {
@@ -152,9 +158,16 @@ func Build(snapshot review.Snapshot, profiles []model.Profile) Catalog {
 
 	games := make(map[string]*Game)
 	platformAssets := make(map[string][]Asset)
+	retroCollisions := retroCollisionGroups(snapshot.Inventory.Observations)
 	for _, profile := range profiles {
 		for _, profileGame := range profile.Games {
 			id, platformID, platformName, title := profileGameIdentity(profileGame)
+			id = titles.Canonical(id)
+			platformID, platformName = platformForIdentity(id, platformID, platformName)
+			if resolved, ok := titles.Title(id); ok {
+				title = resolved.Title
+			}
+
 			if id == "" || games[id] != nil {
 				continue
 			}
@@ -170,27 +183,37 @@ func Build(snapshot review.Snapshot, profiles []model.Profile) Catalog {
 			continue
 		}
 
-		id := observation.IdentityHint
-		attention := id == ""
+		originalID := observation.IdentityHint
+		if retroCollisions[originalID] {
+			originalID = disambiguatedObservationIdentity(observation)
+		}
+		id := titles.Canonical(originalID)
+		attention := id == "" || retroCollisions[observation.IdentityHint] || titles.Ambiguous[originalID]
 		if id == "" {
 			id = "unmapped:" + review.ObservationID(observation.RootID, observation.RelativePath)
 		}
+
 		game := games[id]
 		if game == nil {
 			platformID, platformName := platformFor(observation)
-			title, raw := displayTitle(id, observation)
+			platformID, platformName = platformForIdentity(id, platformID, platformName)
+			title, raw := displayTitle(id, originalID, observation, titles)
 			game = &Game{
 				ID: id, Title: title, RawTitle: raw,
 				PlatformID: platformID, PlatformName: platformName,
-				Identities: identityMap(id), NeedsAttention: attention,
+				Identities: identitiesFor(id, originalID), NeedsAttention: attention,
+				Store: titles.Stores[originalID],
 			}
 			games[id] = game
 		} else {
 			if game.Identities == nil {
 				game.Identities = make(map[string]string)
 			}
-			for namespace, value := range identityMap(id) {
+			for namespace, value := range identitiesFor(id, originalID) {
 				game.Identities[namespace] = value
+			}
+			if game.Store == "" {
+				game.Store = titles.Stores[originalID]
 			}
 		}
 		role := observation.Media.Role
@@ -264,6 +287,52 @@ func Build(snapshot review.Snapshot, profiles []model.Profile) Catalog {
 		return result.Platforms[i].ID < result.Platforms[j].ID
 	})
 	return result
+}
+
+func platformForIdentity(identity, fallbackID, fallbackName string) (string, string) {
+	switch {
+	case strings.HasPrefix(identity, "steam:"):
+		return "steam", "Steam"
+	case strings.HasPrefix(identity, "playnite:"):
+		return "playnite", "Playnite"
+	case strings.HasPrefix(identity, "retro:"):
+		parts := strings.SplitN(identity, ":", 3)
+		if len(parts) == 3 {
+			return "retro:" + parts[1], SystemName(parts[1])
+		}
+	}
+	return fallbackID, fallbackName
+}
+
+func retroCollisionGroups(observations []model.Observation) map[string]bool {
+	stems := make(map[string]map[string]struct{})
+	for _, observation := range observations {
+		if !strings.HasPrefix(observation.IdentityHint, "retro:") {
+			continue
+		}
+		stem := observationRawStem(observation)
+		if stems[observation.IdentityHint] == nil {
+			stems[observation.IdentityHint] = make(map[string]struct{})
+		}
+		stems[observation.IdentityHint][stem] = struct{}{}
+	}
+	result := make(map[string]bool)
+	for identity, values := range stems {
+		result[identity] = len(values) > 1
+	}
+	return result
+}
+
+func disambiguatedObservationIdentity(observation model.Observation) string {
+	parts := strings.SplitN(observation.IdentityHint, ":", 3)
+	if len(parts) != 3 {
+		return observation.IdentityHint
+	}
+	return metadata.DisambiguatedRetroIdentity(parts[1], observationRawStem(observation))
+}
+
+func observationRawStem(observation model.Observation) string {
+	return strings.TrimSuffix(filepath.Base(filepath.ToSlash(observation.RelativePath)), filepath.Ext(observation.RelativePath))
 }
 
 func fallbackExplanations(game Game) []Fallback {
@@ -394,11 +463,16 @@ func platformFor(observation model.Observation) (string, string) {
 	return "other", "Other"
 }
 
-func displayTitle(id string, observation model.Observation) (string, string) {
+func displayTitle(id, originalID string, observation model.Observation, titles metadata.Catalog) (string, string) {
+	if resolved, ok := titles.Title(originalID); ok {
+		return resolved.Title, ""
+	}
 	if strings.HasPrefix(id, "retro:") {
 		stem := strings.TrimSuffix(filepath.Base(filepath.ToSlash(observation.RelativePath)), filepath.Ext(observation.RelativePath))
 		return CleanRetroTitle(stem), stem
 	}
+	// These labels are the final fallback only after every trusted local
+	// metadata provider has declined the identity.
 	if strings.HasPrefix(id, "steam:") {
 		return "Steam app " + strings.TrimPrefix(id, "steam:"), ""
 	}
@@ -407,6 +481,14 @@ func displayTitle(id string, observation model.Observation) (string, string) {
 	}
 	stem := strings.TrimSuffix(filepath.Base(filepath.ToSlash(observation.RelativePath)), filepath.Ext(observation.RelativePath))
 	return CleanRetroTitle(stem), stem
+}
+
+func identitiesFor(canonical, original string) map[string]string {
+	result := identityMap(canonical)
+	for namespace, value := range identityMap(original) {
+		result[namespace] = value
+	}
+	return result
 }
 
 func shortID(value string) string {

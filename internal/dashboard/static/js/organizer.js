@@ -4,6 +4,8 @@ let catalog = null;
 let activePlatform = "";
 let activeGame = null;
 let scanPolling = false;
+let metadataPolling = false;
+let lastMetadataStatus = "";
 const dialogOpeners = new WeakMap();
 
 function mediaURL(id) {
@@ -74,6 +76,7 @@ function renderLibrary() {
   clear(grid);
   const gameCount = (catalog.games || []).length;
   summary.textContent = `${gameCount} ${gameCount === 1 ? "game" : "games"} across ${(catalog.platforms || []).length} platforms.`;
+  if (catalog.metadataStatus === "loading") summary.append(" Resolving local game titles...");
   document.getElementById("library-grid-status").textContent =
     `${(catalog.platforms || []).length} ${(catalog.platforms || []).length === 1 ? "platform" : "platforms"} loaded.`;
   if (catalog.needsAttention) {
@@ -270,6 +273,7 @@ function openGame(game) {
   const identities = document.getElementById("game-identities");
   clear(identities);
   for (const [namespace, value] of Object.entries(game.identities || {})) identities.appendChild(chip(`${namespace}: ${value}`));
+  if (game.store) identities.appendChild(chip(`Library: ${game.store}`));
   document.getElementById("game-profile-use").textContent = game.profiles?.length
     ? `Used by ${game.profiles.join(", ")}`
     : "Not used by a saved profile";
@@ -330,10 +334,23 @@ async function renderSources(api) {
   const pathKey = (path) => detected.caseSensitive ? path : path.toLocaleLowerCase();
   const detectedByPath = new Map((detected.sources || []).map((item) => [pathKey(item.path), item]));
   const roots = config.config?.roots || [];
-  const items = [...detected.sources || []];
+  const items = [...detected.sources || [], ...detected.supported || []];
+  const diagnosticsFor = (kind) => (detected.metadataDiagnostics || []).filter((diagnostic) => {
+    if (kind === "steam-grid") return diagnostic.source.startsWith("steam");
+    if (kind.startsWith("playnite")) return diagnostic.source.startsWith("playnite");
+    if (kind === "esde-media") return diagnostic.source.startsWith("esde");
+    return false;
+  });
   for (const root of roots) {
     if (!detectedByPath.has(pathKey(root.path))) {
-      items.push({ ...root, name: root.id, itemCount: null, configured: true });
+      items.push({
+        ...root,
+        name: root.id,
+        itemCount: null,
+        configured: true,
+        status: "temporarily-unavailable",
+        message: "Configured source is not available on this device.",
+      });
     }
   }
   if (!items.length) {
@@ -341,16 +358,23 @@ async function renderSources(api) {
     return detected;
   }
   for (const source of items) {
+    const diagnostics = diagnosticsFor(source.kind);
+    const unavailable = source.status === "temporarily-unavailable";
+    const connected = source.configured && !unavailable;
     grid.appendChild(el("article", { class: "source-card" }, [
       el("div", {}, [
         el("h3", { text: source.name }),
-        el("p", { text: source.itemCount === null ? "Configured source" : `${source.itemCount} items found` }),
+        el("p", { text: source.message || (source.itemCount === null ? "Configured source" : `${source.itemCount} items found`) }),
+        diagnostics[0] ? el("small", { text: diagnostics[0].message }) : null,
         source.configured && catalog?.scannedAt
           ? el("small", { text: `Last scan ${new Date(catalog.scannedAt).toLocaleString()}` })
           : null,
       ]),
       el("div", { class: "source-actions" }, [
-        chip(source.configured ? "Connected" : "Detected", source.configured ? "chip--connected" : ""),
+        chip(
+          connected ? "Connected" : (unavailable ? "Unavailable" : (source.status === "not-on-this-device" ? "Not on this device" : "Detected")),
+          connected ? "chip--connected" : ((unavailable || source.status === "not-on-this-device") ? "chip--neutral" : ""),
+        ),
         source.configured ? el("button", {
           type: "button", class: "secondary-action", text: "Rescan",
           onclick: () => document.getElementById("library-refresh").click(),
@@ -408,8 +432,18 @@ async function setupOnboarding(api, announceStatus, announceError) {
 async function loadCatalog(api, announceError, monitorScan = true) {
   try {
     catalog = await api.get("/api/organizer");
+    const metadataCompleted = lastMetadataStatus === "loading" && catalog.metadataStatus === "ready";
+    lastMetadataStatus = catalog.metadataStatus || "";
     renderLibrary();
     await renderProfiles(api);
+    if (metadataCompleted) await renderSources(api);
+    if (catalog.metadataStatus === "loading" && !metadataPolling) {
+      metadataPolling = true;
+      setTimeout(async () => {
+        metadataPolling = false;
+        await loadCatalog(api, announceError, false);
+      }, 300);
+    }
     if (monitorScan) {
       const status = await api.get("/api/organizer/scan");
       if (status.status === "scanning") void pollScan(api, announceError);
@@ -441,6 +475,12 @@ async function pollScan(api, announceError) {
       }
       if (status.status === "idle") {
         await loadCatalog(api, announceError, false);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const replacement = await api.get("/api/organizer/scan");
+        if (replacement.status !== "scanning") {
+          progress.textContent = "Scan stopped because the source configuration changed.";
+          break;
+        }
       } else if (status.status === "complete") {
         progress.textContent = `Scan complete · ${status.completed} sources checked`;
         break;

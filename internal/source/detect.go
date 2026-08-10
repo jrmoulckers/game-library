@@ -30,6 +30,8 @@ type Candidate struct {
 	System     string `json:"system,omitempty"`
 	ItemCount  int    `json:"itemCount"`
 	Configured bool   `json:"configured"`
+	Status     string `json:"status,omitempty"`
+	Message    string `json:"message,omitempty"`
 }
 
 func Detect(env Environment, configured []model.Root) []Candidate {
@@ -72,6 +74,7 @@ func Detect(env Environment, configured []model.Root) []Candidate {
 		candidates = append(candidates, Candidate{
 			ID: id, Kind: kind, Name: name, Path: path,
 			ItemCount: countItems(env, path), Configured: isConfigured,
+			Status: map[bool]string{true: "connected", false: "detected"}[isConfigured],
 		})
 	}
 
@@ -104,6 +107,38 @@ func Detect(env Environment, configured []model.Root) []Candidate {
 		return candidates[i].ID < candidates[j].ID
 	})
 	return candidates
+}
+
+func SupportedStates(detected []Candidate, configured []model.Root) []Candidate {
+	presentKinds := make(map[string]bool)
+	for _, candidate := range detected {
+		presentKinds[candidate.Kind] = true
+		if candidate.Kind == "playnite-extra" {
+			presentKinds["playnite-library"] = true
+		}
+	}
+	for _, root := range configured {
+		presentKinds[root.Kind] = true
+		if root.Kind == "playnite-extra" {
+			presentKinds["playnite-library"] = true
+		}
+	}
+	definitions := []Candidate{
+		{ID: "supported-steam", Kind: "steam-grid", Name: "Steam custom artwork", Message: "No Steam custom artwork was found on this device."},
+		{ID: "supported-playnite", Kind: "playnite-library", Name: "Playnite", Message: "Playnite is not installed on this device."},
+		{ID: "supported-gaming-profiles", Kind: "decky-catalog", Name: "Deck Gaming Profiles", Message: "The synced GamingProfiles catalog is not on this device."},
+		{ID: "supported-retrodeck", Kind: "esde-media", Name: "RetroDECK / ES-DE", Message: "Not on this device - RetroDECK media may live on your Steam Deck."},
+		{ID: "supported-romm", Kind: "romm", Name: "RomM", Message: "No local RomM artwork source is configured on this device."},
+	}
+	var result []Candidate
+	for _, definition := range definitions {
+		if presentKinds[definition.Kind] {
+			continue
+		}
+		definition.Status = "not-on-this-device"
+		result = append(result, definition)
+	}
+	return result
 }
 
 func detectSteam(env Environment, userdata string, add func(string, string, string, string)) {

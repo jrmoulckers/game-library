@@ -87,7 +87,9 @@ CLI command instead of rendering a blank page.
 Opening `http://<listen-address>/` presents the artwork organizer:
 
 - **Library** — platform cards with artwork mosaics, game counts, coverage, and
-  missing-art counts. This is the landing view once a source is configured.
+  missing-art counts. Human-readable titles come from local Steam
+  `appinfo.vdf`/manifests/shortcuts, Playnite metadata, or ES-DE gamelists; a
+  safe labeled placeholder remains when local metadata is unavailable.
 - **Platform detail** — a searchable, sortable cover grid with straightforward
   artwork-coverage filters.
 - **Game detail** — identities, every available artwork role, missing-role and
@@ -100,6 +102,9 @@ Opening `http://<listen-address>/` presents the artwork organizer:
   owner confirms found folders once; manual configuration remains available.
   Organizer rescans report per-source progress and publish partial in-memory
   results as each source completes.
+  Source availability is scoped to the current device: a desktop without
+  RetroDECK media is complete, not erroneous, and the dashboard never probes a
+  Steam Deck or other remote host.
 - **Advanced** — the existing setup, overview, artwork table, identity queue,
   duplicates, policy, profile draft editor, plans and Gate A/B/C reviews,
   adapter readiness, and recovery/integrity history remain intact in one

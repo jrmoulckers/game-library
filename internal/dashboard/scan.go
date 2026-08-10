@@ -62,28 +62,68 @@ func (m *scanManager) start(cfg model.Config, cache *snapshotCache) bool {
 func (m *scanManager) run(cfg model.Config, cache *snapshotCache, generation, revision uint64) {
 	defer cache.endRefresh()
 	defer m.finish(generation)
-	combined := model.Inventory{
-		Version: model.SchemaVersion, ToolVersion: model.ToolVersion,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339), Privacy: "private",
+	type rootResult struct {
+		index     int
+		inventory model.Inventory
+		err       error
 	}
-	for index, root := range cfg.Roots {
+
+	jobs := make(chan int)
+	results := make(chan rootResult, len(cfg.Roots))
+	workers := 2
+	if len(cfg.Roots) < workers {
+		workers = len(cfg.Roots)
+	}
+	var group sync.WaitGroup
+	group.Add(workers)
+	for range workers {
+		go func() {
+			defer group.Done()
+			for index := range jobs {
+				if !m.isCurrent(generation) {
+					continue
+				}
+				m.updateRoot(index, "scanning", 0, "")
+				scanned, err := inventory.Scan([]model.Root{cfg.Roots[index]})
+				results <- rootResult{index: index, inventory: scanned, err: err}
+			}
+		}()
+	}
+	go func() {
+		for index := range cfg.Roots {
+			jobs <- index
+		}
+		close(jobs)
+		group.Wait()
+		close(results)
+	}()
+
+	completed := make(map[int]rootResult, len(cfg.Roots))
+	for result := range results {
 		if !m.isCurrent(generation) {
 			return
 		}
-		m.updateRoot(index, "scanning", 0, "")
-		scanned, err := inventory.Scan([]model.Root{root})
-		if err != nil {
-			m.updateRoot(index, "error", 0, "This source could not be scanned. Check that it is available and readable.")
+		completed[result.index] = result
+		if result.err != nil {
+			m.updateRoot(result.index, "error", 0, "This source could not be scanned. Check that it is available and readable.")
 		} else {
-			combined.Roots = append(combined.Roots, scanned.Roots...)
-			combined.Observations = append(combined.Observations, scanned.Observations...)
-			combined.Issues = append(combined.Issues, scanned.Issues...)
-			m.updateRoot(index, "complete", len(scanned.Observations), "")
+			m.updateRoot(result.index, "complete", len(result.inventory.Observations), "")
+		}
+		combined := model.Inventory{
+			Version: model.SchemaVersion, ToolVersion: model.ToolVersion,
+			CreatedAt: time.Now().UTC().Format(time.RFC3339), Privacy: "private",
+		}
+		for index := range cfg.Roots {
+			value, ok := completed[index]
+			if !ok || value.err != nil {
+				continue
+			}
+			combined.Roots = append(combined.Roots, value.inventory.Roots...)
+			combined.Observations = append(combined.Observations, value.inventory.Observations...)
+			combined.Issues = append(combined.Issues, value.inventory.Issues...)
 		}
 		combined.DuplicateSummary = inventory.SummarizeDuplicates(combined.Observations)
-		if m.isCurrent(generation) {
-			cache.storeIfRevision(review.NewSnapshot(cfg, combined, review.SourceScan, time.Now().UTC()), revision)
-		}
+		cache.storeIfRevision(review.NewSnapshot(cfg, combined, review.SourceScan, time.Now().UTC()), revision)
 	}
 }
 
@@ -152,6 +192,7 @@ func (h *handlers) startOrganizerScan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, h.scans.snapshot())
 		return
 	}
+	h.metadata.start(cfg.Roots, true)
 	writeJSON(w, http.StatusAccepted, h.scans.snapshot())
 }
 

@@ -22,6 +22,7 @@ type handlers struct {
 	csrfToken string
 	snapshots *snapshotCache
 	scans     *scanManager
+	metadata  *metadataCache
 	stateMu   sync.RWMutex
 }
 
@@ -165,6 +166,7 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 	// snapshot was computed against the previous configuration and must
 	// never be served again.
 	h.scans.invalidate()
+	h.metadata.invalidate()
 	if err := h.snapshots.invalidateFor(body.Config); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "internal_error", "failed to update the inventory snapshot state")
 		return

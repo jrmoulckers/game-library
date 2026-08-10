@@ -48,6 +48,11 @@ stack without changing reading or focus order.
 - Metadata facts are compact text chips for dimensions, aspect, type, size,
   source, copy count, and profile use.
 - Missing roles are explicit text, never empty placeholders or color alone.
+- Title metadata resolves progressively from local caches. While it loads, the
+  library says so plainly; unavailable metadata leaves an honest labeled
+  identity placeholder rather than an error or invented name.
+- Supported sources absent from the current device use neutral gray status and
+  explanatory copy. They never create empty platform cards or red warnings.
 - Every Advanced table keeps its caption, labeled headers, and empty row.
 - Long or optional detail uses native `details`/`summary`.
 - Loading, success, conflict, empty, disabled, and error states remain visible

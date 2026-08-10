@@ -57,6 +57,15 @@ repository.
 - Aggregate files into games only from deterministic or explicit identity
   evidence. Ambiguous relationships stay separate and visible as needing
   attention.
+- Resolve display titles only from local, read-only metadata: Steam caches and
+  manifests, Playnite's safely readable game collection, and ES-DE gamelists.
+  A metadata failure keeps a labeled identity placeholder and never fails the
+  artwork library.
+- Correlate Playnite with Steam only from the reviewed Steam plugin identity
+  plus exact numeric storefront GameId. Never correlate by title similarity.
+- Treat source availability as device-local. A supported source absent from the
+  current machine is neutral information, not a broken-library state or a
+  reason to probe another device.
 
 ## Evidence on Hand
 
