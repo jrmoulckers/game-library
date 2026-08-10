@@ -19,7 +19,7 @@ the private inventory or exact plan outputs.
 
 Committed artifacts here carry no environment residue — no absolute user paths,
 home directories, or account identifiers
-([`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/assurance/security-and-privacy.md#secret-lifecycle)).
+([`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/security-and-privacy.md#secret-lifecycle)).
 That rule is not left as prose: CI fails the build when residue reappears in this
 directory, which is the executable form required by
-[`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/assurance/testing.md#executable-procedures).
+[`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/testing.md#executable-procedures).

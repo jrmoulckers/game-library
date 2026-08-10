@@ -52,10 +52,6 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Fetch Engineering golangci-lint configuration
-        env:
-          # jrmoulckers/engineering is private, so the default GITHUB_TOKEN cannot
-          # read it. Store a token with read access as ENGINEERING_READ_TOKEN.
-          GH_TOKEN: ${{ secrets.ENGINEERING_READ_TOKEN }}
         run: scripts/fetch-engineering-config.sh
       - uses: golangci/golangci-lint-action@v8
         with:

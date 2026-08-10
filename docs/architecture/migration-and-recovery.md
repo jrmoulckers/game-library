@@ -11,13 +11,13 @@ of these by default.
   explicit write mode; the default invocation only reads and reports.
 - **Symbolic roots, relative paths.** Keeping device paths, drive letters, home
   directories, and account identifiers out of committed and shared artifacts is
-  [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/assurance/security-and-privacy.md#secret-lifecycle).
+  [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/assurance/security-and-privacy.md#secret-lifecycle).
   Repo-specific: every path recorded in any state/migration document uses a
   symbolic root token (`${LIBRARY}`, `${INBOX}`, `${STAGING}`, ...) resolved by
   local, untracked configuration. See `common.defs.schema.json`'s `SymbolicPath`.
 - **Sanitized reports.** Redacting sensitive payloads before evidence leaves the
   producing boundary is
-  [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.1.0/principles/operations/observability.md#redacted-observable-evidence).
+  [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.2.0/principles/operations/observability.md#redacted-observable-evidence).
   Repo-specific: `inventory-report.schema.json`'s `privacy` field records whether
   a given inventory document is `private` (root-relative paths, safe for
   local-only use) or `sanitized` (no observations, no relative paths at all —
