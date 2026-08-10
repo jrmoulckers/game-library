@@ -184,6 +184,7 @@ The IDs that bear most directly on this repository:
 | [`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/architecture/boundaries-and-contracts.md#durable-decisions) | [`docs/architecture/decisions/`](docs/architecture/decisions/) |
 | [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/platforms/integration-boundaries.md#thin-typed-adapters) | [`docs/architecture/adapters.md`](docs/architecture/adapters.md) |
 | [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/security-and-privacy.md#secret-lifecycle) | `source.json`'s `endpoint_ref` is a sanitized pointer (doc anchor, env var name), never a literal credential |
+| [`ENG-SEC-002`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/security-and-privacy.md#verified-supply-chain) | CI pins every external action to an immutable commit SHA rather than a mutable tag |
 | [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/operations/observability.md#redacted-observable-evidence) | `sanitized` inventory reports, safe to attach to a bug report |
 | [`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/testing.md#distinct-static-signals) | the independent CI signals below |
 | [`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.2.3/principles/assurance/testing.md#positive-and-negative-polarity) | paired accept/reject fixtures in `internal/schema` and the validator tests |
