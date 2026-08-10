@@ -3,6 +3,7 @@ package dashboard
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -490,9 +491,16 @@ func (h *handlers) validateSetupRoots(w http.ResponseWriter, r *http.Request) {
 			result.IsDir = info.IsDir()
 			if result.IsDir {
 				if f, openErr := os.Open(root.Path); openErr == nil {
-					_, _ = f.Readdirnames(1)
-					f.Close()
-					result.Readable = true
+					// A single entry is enough to prove the directory is
+					// readable; io.EOF just means it is empty.
+					_, readErr := f.Readdirnames(1)
+					result.Readable = readErr == nil || errors.Is(readErr, io.EOF)
+					if closeErr := f.Close(); closeErr != nil {
+						result.Readable = false
+					}
+					if !result.Readable {
+						result.Issues = append(result.Issues, "directory exists but is not readable")
+					}
 				} else {
 					result.Issues = append(result.Issues, "directory exists but is not readable")
 				}

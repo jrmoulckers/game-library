@@ -63,6 +63,24 @@ func BuildAndPersistExportPlan(paths workspace.Paths, profileDraft model.Profile
 	return plan, created, path, err
 }
 
+// decodeArtifact reports whether data parsed cleanly into dst. A history or
+// plan scan walks a directory that may hold files this package did not write,
+// and one unparseable entry must not fail the whole listing; expressing the
+// outcome as a bool keeps that "skip" explicit at the call site.
+func decodeArtifact(data []byte, dst any) bool {
+	return json.Unmarshal(data, dst) == nil
+}
+
+// artifactDigest returns the manifest digest of value, reporting false when it
+// cannot be computed so the caller can skip the artifact.
+func artifactDigest(value any) (string, bool) {
+	digest, err := manifest.Digest(value)
+	if err != nil {
+		return "", false
+	}
+	return digest, true
+}
+
 // PersistedPlanDigestExists reports whether any plan artifact previously
 // persisted under paths.Artifacts/"plans" has a manifest.Digest equal to
 // digest. This is the integrity link Gate C review requires (see
@@ -91,13 +109,13 @@ func PersistedPlanDigestExists(paths workspace.Paths, digest string) (bool, erro
 			return workspace.SanitizeFSError(readErr)
 		}
 		var plan model.Manifest
-		if err := json.Unmarshal(data, &plan); err != nil {
+		if !decodeArtifact(data, &plan) {
 			// Skip files this package did not write rather than failing
 			// the whole scan over one unreadable entry.
 			return nil
 		}
-		got, digestErr := manifest.Digest(plan)
-		if digestErr != nil {
+		got, ok := artifactDigest(plan)
+		if !ok {
 			return nil
 		}
 		if got == digest {

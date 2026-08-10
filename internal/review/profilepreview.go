@@ -87,7 +87,7 @@ func synthesizeDeckyProfileV1(p model.Profile, plan model.Manifest) model.DeckyP
 
 	mods := make([]model.DeckyModV1, 0, len(p.Mods))
 	for _, mod := range p.Mods {
-		mods = append(mods, model.DeckyModV1{Game: mod.Game, Set: mod.Set})
+		mods = append(mods, model.DeckyModV1(mod))
 	}
 
 	return model.DeckyProfileV1{

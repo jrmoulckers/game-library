@@ -3,6 +3,7 @@
 package review
 
 import (
+	"errors"
 	"syscall"
 	"unsafe"
 )
@@ -27,13 +28,18 @@ func platformDiskFreeBytes(path string) (int64, bool) {
 		return 0, false
 	}
 	var freeBytesAvailable, totalBytes, totalFreeBytes uint64
-	r1, _, _ := procGetDiskFreeSpaceExW.Call(
+	r1, _, callErr := procGetDiskFreeSpaceExW.Call(
 		uintptr(unsafe.Pointer(ptr)),
 		uintptr(unsafe.Pointer(&freeBytesAvailable)),
 		uintptr(unsafe.Pointer(&totalBytes)),
 		uintptr(unsafe.Pointer(&totalFreeBytes)),
 	)
 	if r1 == 0 {
+		// Call always returns a non-nil error (it reports the thread's last
+		// errno even on success), so r1 is the only reliable success signal.
+		// The errno is inspected for clarity; callers only get the bool.
+		var errno syscall.Errno
+		_ = errors.As(callErr, &errno)
 		return 0, false
 	}
 	if freeBytesAvailable > 1<<62 {

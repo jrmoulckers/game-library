@@ -68,7 +68,12 @@ func BuildOverview(snapshot Snapshot, now time.Time) Overview {
 		scannedAt = snapshot.ScannedAt.UTC().Format(time.RFC3339)
 	}
 
-	inventoryDigest, _ := manifest.Digest(snapshot.Inventory)
+	// A digest that cannot be computed is left empty rather than filled with a
+	// placeholder, so a client can never cite a value that is not real.
+	inventoryDigest := ""
+	if digest, err := manifest.Digest(snapshot.Inventory); err == nil {
+		inventoryDigest = digest
+	}
 
 	return Overview{
 		Source:           snapshot.Source,

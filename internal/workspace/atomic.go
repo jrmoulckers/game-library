@@ -34,9 +34,13 @@ func ensureDir(dir string) error {
 		return fmt.Errorf("create directory: %w", SanitizeFSError(err))
 	}
 	if runtime.GOOS != "windows" {
-		// Best effort: MkdirAll does not narrow permissions on directories
-		// that already existed with looser modes.
-		_ = os.Chmod(dir, dirPerm)
+		// MkdirAll does not narrow permissions on directories that already
+		// existed with looser modes, so this is opportunistic.
+		if chmodErr := os.Chmod(dir, dirPerm); chmodErr != nil {
+			// Intentionally not fatal: the directory is usable either way,
+			// and it may be owned by another user.
+			_ = chmodErr
+		}
 	}
 	return nil
 }

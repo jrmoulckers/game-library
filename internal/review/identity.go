@@ -57,7 +57,13 @@ func BuildIdentityView(snapshot Snapshot) IdentityView {
 			Item: item,
 		})
 	}
-	view.InventoryDigest, _ = manifest.Digest(snapshot.Inventory)
-	view.IdentityDigest, _ = manifest.Digest(report)
+	// Both digests stay empty rather than becoming a placeholder when they
+	// cannot be computed, so a Gate A review can never cite an unreal value.
+	if digest, err := manifest.Digest(snapshot.Inventory); err == nil {
+		view.InventoryDigest = digest
+	}
+	if digest, err := manifest.Digest(report); err == nil {
+		view.IdentityDigest = digest
+	}
 	return view
 }

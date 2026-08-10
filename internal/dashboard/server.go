@@ -1,3 +1,6 @@
+// Package dashboard serves the local, loopback-only review UI: a read-only
+// HTTP surface over the review snapshot that plans, but never applies,
+// changes to the synced tree.
 package dashboard
 
 import (
