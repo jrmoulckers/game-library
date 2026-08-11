@@ -220,6 +220,12 @@ loudly on a non-200, an empty body, or a payload that is not a golangci-lint
 config — lint passing against a config that failed to download would be worse
 than a red build.
 
+Fetching at a pinned ref rather than vendoring is now the ratified delivery
+channel for token-free shared configuration, per
+[ADR-0001 (two-channel config delivery)](https://github.com/jrmoulckers/engineering/blob/v0.15.1/docs/architecture/0001-two-channel-config-delivery.md)
+in `jrmoulckers/engineering`. The npm channel described there does not apply
+here: this repository has no npm surface, so it needs no registry access.
+
 The obligations that bear most directly on this repository's contract are the
 Product compliance ones. `PROD-COMP-006` (permit only reviewed software
 distribution) requires a known license classification and publishing boundary
