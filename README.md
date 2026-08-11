@@ -228,6 +228,15 @@ loudly on a non-200, an empty body, or a payload that is not a golangci-lint
 config — lint passing against a config that failed to download would be worse
 than a red build.
 
+A pinned fetch carries no built-in staleness signal, so CI reports one. It
+compares the upstream `config-revision` marker rather than the tag: the
+revision is bumped only when a rule's verdict changes, which has happened once
+in 33 releases, so comparing tags would post a notice on nearly every release
+that could not have altered a lint result. The notice is never fatal — an
+offline runner is not a staleness signal — and a pin older than the marker
+itself reports that its verdicts cannot be compared, since absence is the only
+thing such a copy can say about itself.
+
 Fetching at a pinned ref rather than vendoring is now the ratified delivery
 channel for token-free shared configuration, per
 [ADR-0001 (two-channel config delivery)](https://github.com/jrmoulckers/engineering/blob/v0.15.1/docs/architecture/0001-two-channel-config-delivery.md)
