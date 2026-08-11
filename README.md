@@ -198,7 +198,7 @@ Each signal reports independently and blocks the merge
 ```
 test -z "$(gofmt -l .)"   # format
 go vet ./...              # vet
-golangci-lint run         # lint
+make lint                 # lint (fetches the config, then runs it)
 go test ./...             # behavior
 go build ./...            # build
 ```
@@ -210,10 +210,18 @@ inheritance, so `scripts/fetch-engineering-config.sh` materializes it at a pinne
 tag into a gitignored `.golangci.yml`:
 
 ```
-scripts/fetch-engineering-config.sh          # defaults to v0.15.5
-scripts/fetch-engineering-config.sh main     # or any ref
-golangci-lint run
+make lint                                    # fetch if needed, then lint
+scripts/fetch-engineering-config.sh main     # or pin any ref by hand
 ```
+
+**Use `make lint` rather than a bare `golangci-lint run`.** When no configuration
+file is found, golangci-lint does not complain: it lints with its built-in
+defaults, prints `0 issues` and exits `0`. A contributor who has not run the
+fetch therefore gets a green result from a weaker rule set than CI enforces —
+measured here as 20 spurious errcheck reports and 5 missing linters. The `lint`
+target depends on the config so it cannot be skipped, and passes `--config` so
+that a missing file is a hard error (exit 3) instead of a silent downgrade. CI
+passes `--config` for the same reason.
 
 The engineering repository is public, so this needs no token. The script fails
 loudly on a non-200, an empty body, or a payload that is not a golangci-lint
