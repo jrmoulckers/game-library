@@ -210,7 +210,7 @@ inheritance, so `scripts/fetch-engineering-config.sh` materializes it at a pinne
 tag into a gitignored `.golangci.yml`:
 
 ```
-scripts/fetch-engineering-config.sh          # defaults to v0.12.0
+scripts/fetch-engineering-config.sh          # defaults to v0.15.5
 scripts/fetch-engineering-config.sh main     # or any ref
 golangci-lint run
 ```
