@@ -48,10 +48,9 @@ func openReadOnly(name string) (*os.File, error) {
 	}
 	file := os.NewFile(handle, name)
 	if file == nil {
-		_, _, closeErr := closeHandle.Call(handle)
 		// Best-effort cleanup: the open already failed, so a close failure
 		// cannot be reported any more usefully than EINVAL.
-		_ = closeErr
+		_, _, _ = closeHandle.Call(handle)
 		return nil, syscall.EINVAL
 	}
 	return file, nil

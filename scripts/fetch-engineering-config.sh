@@ -16,7 +16,7 @@
 set -euo pipefail
 
 REPO="jrmoulckers/engineering"
-REF="${1:-${ENGINEERING_REF:-v0.2.3}}"
+REF="${1:-${ENGINEERING_REF:-v0.10.0}}"
 SRC="configs/golangci.yml"
 URL="https://raw.githubusercontent.com/${REPO}/${REF}/${SRC}"
 

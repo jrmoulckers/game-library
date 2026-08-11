@@ -35,12 +35,10 @@ func ensureDir(dir string) error {
 	}
 	if runtime.GOOS != "windows" {
 		// MkdirAll does not narrow permissions on directories that already
-		// existed with looser modes, so this is opportunistic.
-		if chmodErr := os.Chmod(dir, dirPerm); chmodErr != nil {
-			// Intentionally not fatal: the directory is usable either way,
-			// and it may be owned by another user.
-			_ = chmodErr
-		}
+		// existed with looser modes, so this is opportunistic. Intentionally
+		// not fatal: the directory is usable either way, and it may be owned
+		// by another user.
+		_ = os.Chmod(dir, dirPerm)
 	}
 	return nil
 }
