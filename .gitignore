@@ -16,3 +16,5 @@ coverage.out
 # scripts/fetch-engineering-config.sh. Never committed: jrmoulckers/engineering
 # owns this file, and copying it here would fork it (.github ADR-0003).
 /.golangci.yml
+# Stamp recording which ref the config above was fetched at; see Makefile.
+/.golangci.*.ref
