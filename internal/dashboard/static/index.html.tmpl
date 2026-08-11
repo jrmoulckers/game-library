@@ -109,8 +109,12 @@
             <h2 id="game-detail-heading" tabindex="-1">Game</h2>
             <div id="game-identities" class="chip-row"></div>
           </div>
-          <p id="game-profile-use" class="profile-use"></p>
         </header>
+        <div id="game-profile-coverage" class="coverage-panel" hidden>
+          <h3>Profiles with artwork for this game</h3>
+          <p class="context-line" id="game-profile-coverage-summary"></p>
+          <ul class="coverage-list" id="game-profile-coverage-list"></ul>
+        </div>
         <div id="missing-artwork" class="missing-panel"></div>
         <div id="asset-gallery" class="asset-gallery"></div>
       </section>
@@ -119,18 +123,57 @@
         <header class="view-heading">
           <div>
             <h2 id="profile-library-heading">Profiles</h2>
-            <p>A profile is one artwork set for one device. Build it here, then publish it to that device.</p>
+            <p id="profile-library-summary">A profile is one named artwork set for one platform. It is stored once and reaches every device that runs that platform.</p>
+          </div>
+          <button type="button" id="profile-refresh">Refresh</button>
+        </header>
+
+        <div id="unbound-artwork" class="unbound-panel" hidden>
+          <h3>Artwork not yet assigned to a profile</h3>
+          <p class="context-line">These artwork sets exist in your catalog but no profile claims them. Assigning one is a label change only &mdash; no files move.</p>
+          <div id="unbound-list" class="unbound-list"></div>
+        </div>
+
+        <div id="profile-platforms"></div>
+
+        <details id="live-surfaces" class="advanced-area">
+          <summary>
+            <span>Live frontend folders on this machine</span>
+            <small>Published copies, not the source of truth</small>
+          </summary>
+          <div class="advanced-content">
+            <p class="context-line">These are the artwork folders your frontends read directly. They are device-local by design and are never synced. A profile is the canonical copy; these are what a profile gets published into.</p>
+            <div id="live-surface-list" class="source-grid"></div>
+          </div>
+        </details>
+
+        <form id="profile-create" class="profile-create">
+          <label for="profile-new-name">Add a profile</label>
+          <div class="profile-create__row">
+            <select id="profile-new-platform" aria-label="Platform for the new profile"></select>
+            <input type="text" id="profile-new-name" name="name" placeholder="Minimalist" autocomplete="off" required>
+            <button type="submit" class="button-primary">Add profile</button>
+          </div>
+          <p class="context-line">A profile belongs to one platform. The same name on two platforms stays two separate profiles.</p>
+        </form>
+      </section>
+
+      <section id="profile-detail" aria-labelledby="profile-detail-heading" class="organizer-view" hidden>
+        <button type="button" class="back-button" id="profile-back">&larr; Profiles</button>
+        <header class="view-heading">
+          <div>
+            <p class="game-platform" id="profile-detail-platform"></p>
+            <h2 id="profile-detail-heading" tabindex="-1">Profile</h2>
+            <div id="profile-detail-devices" class="chip-row"></div>
+            <p id="profile-detail-summary"></p>
           </div>
         </header>
-        <form id="profile-create" class="profile-create">
-          <label for="profile-new-name">New profile for a device</label>
-          <div class="profile-create__row">
-            <input type="text" id="profile-new-name" name="name" placeholder="ROG Ally" autocomplete="off" required>
-            <button type="submit" class="button-primary">Create profile</button>
-          </div>
-          <p class="context-line">Pick artwork from any game's gallery to add it to a profile.</p>
+        <form id="profile-game-filters" class="organizer-toolbar">
+          <label for="profile-game-search">Find a game</label>
+          <input id="profile-game-search" type="search" placeholder="Search titles in this profile">
         </form>
-        <div id="profile-card-grid" class="profile-grid"></div>
+        <p id="profile-game-status" class="sr-only" role="status" aria-live="polite"></p>
+        <div id="profile-game-list" class="coverage-grid"></div>
       </section>
 
       <section id="sources" aria-labelledby="sources-heading" class="organizer-view" hidden>
@@ -209,18 +252,6 @@
   <dialog id="artwork-preview" class="preview-dialog" aria-label="Artwork preview">
     <button type="button" id="preview-close" class="dialog-close" aria-label="Close artwork preview">&times;</button>
     <figure></figure>
-  </dialog>
-
-  <dialog id="profile-picker" class="profile-picker" aria-labelledby="profile-picker-heading">
-    <form method="dialog">
-      <h2 id="profile-picker-heading">Choose this <span data-role>artwork</span> for a profile</h2>
-      <label for="profile-picker-select">Profile</label>
-      <select id="profile-picker-select"></select>
-      <div class="button-row">
-        <button value="save">Use this artwork</button>
-        <button value="cancel" class="secondary-action">Cancel</button>
-      </div>
-    </form>
   </dialog>
 
   <footer class="app-footer">

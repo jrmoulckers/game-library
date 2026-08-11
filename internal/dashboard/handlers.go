@@ -46,6 +46,9 @@ func (h *handlers) mux() *http.ServeMux {
 	mux.HandleFunc("GET /api/media/{id}/thumb", h.mediaThumb)
 	mux.HandleFunc("GET /api/review/media/{id}/download", h.reviewMediaDownload)
 	mux.HandleFunc("GET /api/review/profiles", h.reviewProfileDrafts)
+	mux.HandleFunc("GET /api/topology", h.getTopology)
+	mux.HandleFunc("PUT /api/topology", h.putTopology)
+	mux.HandleFunc("GET /api/coverage", h.coverageReport)
 	mux.HandleFunc("POST /api/config/validate-roots", h.validateSetupRoots)
 	return mux
 }

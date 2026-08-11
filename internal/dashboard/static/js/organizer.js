@@ -1,8 +1,10 @@
 import { clear, el, formatBytes } from "./dom.js";
 
 let catalog = null;
+let coverage = null;
 let activePlatform = "";
 let activeGame = null;
+let activeProfile = null;
 let scanPolling = false;
 let metadataPolling = false;
 let lastMetadataStatus = "";
@@ -249,59 +251,28 @@ function openPreview(asset, title) {
   dialog.showModal();
 }
 
-async function chooseForProfile(asset, game, api, announceStatus, announceError) {
-  const all = await api.get("/api/review/profiles");
-  // Catalog profiles are already live on a device and are never rewritten
-  // from here, so only editable drafts can receive artwork.
-  const summaries = all.filter((profile) => profile.source !== "catalog");
-  if (!summaries.length) {
-    announceError("Create a profile for a device first, then choose artwork for it.");
-    showView("profile-library");
-    document.getElementById("profile-new-name")?.focus();
-    return;
-  }
-  const dialog = document.getElementById("profile-picker");
-  dialogOpeners.set(dialog, document.activeElement);
-  const select = dialog.querySelector("select");
-  clear(select);
-  for (const profile of summaries) select.appendChild(el("option", { value: profile.id, text: profile.name }));
-  dialog.querySelector("[data-role]").textContent = asset.role;
-  dialog.returnValue = "";
-  dialog.showModal();
-  const result = await new Promise((resolve) => dialog.addEventListener("close", () => resolve(dialog.returnValue), { once: true }));
-  if (result !== "save") return;
-  try {
-    const id = select.value;
-    const view = await api.get(`/api/drafts/profiles/${encodeURIComponent(id)}`);
-    const profile = view.draft.profile;
-    let profileGame = profile.games.find((item) => item.id === game.id);
-    if (!profileGame) {
-      profileGame = { id: game.id, identities: game.identities, assets: {} };
-      profile.games.push(profileGame);
-    }
-    profileGame.assets[asset.role] = { sha256: asset.sha256, extension: asset.extension };
-    await api.put(`/api/drafts/profiles/${encodeURIComponent(id)}`, {
-      baseDigest: view.draft.digest,
-      profile,
-    });
-    announceStatus(`${asset.role} artwork selected for ${profile.name}.`);
-    await renderProfiles(api);
-  } catch (err) {
-    announceError(`Could not update the profile: ${err.message}`);
-  }
+// profileForArtworkSet names the profile a catalog artwork set belongs
+// to, so a file on disk can say which profile it is part of.
+function profileForArtworkSet(set) {
+  if (!set || !coverage) return null;
+  return coverage.profiles.find((profile) => profile.artworkSet === set) || null;
 }
 
-function assetCard(asset, game, api, announceStatus, announceError) {
+function assetCard(asset, game) {
   const facts = [
     asset.width && asset.height ? `${asset.width}x${asset.height}` : "Dimensions unknown",
     asset.aspect || "Aspect unknown",
     asset.extension ? asset.extension.toUpperCase() : asset.mime,
     formatBytes(asset.size),
     asset.sourceName,
-    asset.location,
   ];
-  if (asset.sharedCopies > 1) facts.push(`Copy stored in ${asset.sharedCopies} places`);
-  if (asset.profiles?.length) facts.push(`Used by ${asset.profiles.length} profiles`);
+  if (asset.sharedCopies > 1) facts.push(`Stored in ${asset.sharedCopies} places`);
+  const owner = profileForArtworkSet(asset.artworkSet);
+  const belonging = owner
+    ? chip(`${owner.platformName} · ${owner.name}`, "chip--profile")
+    : asset.artworkSet
+      ? chip(`Unassigned set: ${asset.artworkSet}`, "chip--missing")
+      : chip(`Live folder · ${asset.sourceId}`, "chip--live");
   return el("article", { class: "asset-card" }, [
     el("button", {
       type: "button", class: "asset-preview",
@@ -310,11 +281,9 @@ function assetCard(asset, game, api, announceStatus, announceError) {
     }, [image(asset.id, `${game.title} ${asset.role}`)]),
     el("div", { class: "asset-card__body" }, [
       el("h3", { text: asset.role }),
+      el("div", { class: "chip-row" }, [belonging]),
       el("div", { class: "chip-row" }, facts.map((fact) => chip(fact))),
-      el("button", {
-        type: "button", class: "secondary-action", text: "Choose for a profile",
-        onclick: () => chooseForProfile(asset, game, api, announceStatus, announceError),
-      }),
+      el("p", { class: "asset-location", text: asset.location }),
     ]),
   ]);
 }
@@ -327,9 +296,7 @@ function openGame(game) {
   clear(identities);
   for (const [namespace, value] of Object.entries(game.identities || {})) identities.appendChild(chip(`${namespace}: ${value}`));
   if (game.store) identities.appendChild(chip(`Library: ${game.store}`));
-  document.getElementById("game-profile-use").textContent = game.profiles?.length
-    ? `Used by ${game.profiles.join(", ")}`
-    : "Not used by a saved profile";
+  renderGameCoverage(game);
   const missing = document.getElementById("missing-artwork");
   clear(missing);
   if (game.missingRoles.length) {
@@ -343,86 +310,279 @@ function openGame(game) {
   }
   const gallery = document.getElementById("asset-gallery");
   clear(gallery);
-  for (const asset of game.assets) gallery.appendChild(assetCard(asset, game, window.gamelibAPI, window.announceStatus, window.announceError));
+  for (const asset of game.assets) gallery.appendChild(assetCard(asset, game));
   showView("game-detail");
 }
 
-async function renderProfiles(api) {
-  const grid = document.getElementById("profile-card-grid");
-  clear(grid);
-  const profiles = await api.get("/api/review/profiles");
-  if (!profiles.length) {
-    grid.appendChild(el("p", { class: "empty-state", text: "No profiles yet. Create one above for a device, then pick artwork from any game's gallery." }));
+// renderGameCoverage answers "which profiles have media for this game",
+// including the profiles that apply to this game's platform but hold
+// nothing for it. The gaps are the point.
+function renderGameCoverage(game) {
+  const panel = document.getElementById("game-profile-coverage");
+  const list = document.getElementById("game-profile-coverage-list");
+  const summary = document.getElementById("game-profile-coverage-summary");
+  const entry = coverage?.games.find((item) => item.gameId === game.id);
+  clear(list);
+  if (!entry || !entry.profiles.length) {
+    panel.hidden = true;
     return;
   }
-  for (const profile of profiles) {
-    // A catalog profile is already live on a device; it is listed so the
-    // owner can see what that device uses, not edited from here.
-    if (profile.source === "catalog") {
-      grid.appendChild(el("article", { class: "profile-card" }, [
-        el("div", { class: "profile-mosaic" }, [0, 1, 2, 3].map(() => el("span", { class: "mosaic-placeholder" }))),
-        el("div", {}, [
-          el("h3", { text: profile.name }),
-          el("p", { text: `${profile.artwork} artwork ${profile.artwork === 1 ? "file" : "files"} · already on a device` }),
-          profile.description ? el("p", { class: "profile-note", text: profile.description }) : null,
-          chip("Live · read-only"),
-        ]),
-      ]));
-      continue;
-    }
-    const view = await api.get(`/api/drafts/profiles/${encodeURIComponent(profile.id)}`);
-    const games = view.draft?.profile?.games || [];
-    const assets = games.flatMap((game) => Object.values(game.assets || {}));
-    grid.appendChild(el("article", { class: "profile-card" }, [
-      el("div", { class: "profile-mosaic" }, assets.slice(0, 4).map((asset) => {
-        const found = catalog?.games.flatMap((game) => game.assets).find((item) => item.sha256 === asset.sha256);
-        return found ? image(found.id, "") : el("span", { class: "mosaic-placeholder" });
-      })),
+  panel.hidden = false;
+  summary.textContent = `${entry.coveredCount} of ${entry.profiles.length} ${entry.platformName} profiles have artwork for this game.`;
+  for (const profile of entry.profiles) {
+    list.appendChild(el("li", { class: profile.covered ? "coverage-row" : "coverage-row coverage-row--gap" }, [
+      el("button", {
+        type: "button", class: "coverage-row__name",
+        onclick: () => openProfile(profile.key),
+      }, [
+        el("strong", { text: profile.name }),
+        el("span", { class: "coverage-row__platform", text: profile.platformName }),
+      ]),
+      el("div", { class: "chip-row" }, profile.covered
+        ? profile.roles.map((role) => chip(role, "chip--role"))
+        : [chip("no artwork here", "chip--missing")]),
+      el("div", { class: "chip-row coverage-row__devices" },
+        profile.devices.map((device) => chip(device.name, "chip--device"))),
+    ]));
+  }
+}
+
+function deviceLine(devices) {
+  if (!devices.length) return "Not on any declared device";
+  return `On ${devices.map((device) => device.name).join(", ")}`;
+}
+
+function profileCard(profile) {
+  const body = [
+    el("h3", { text: profile.name }),
+    el("p", {
+      text: profile.empty
+        ? "No artwork yet"
+        : `${profile.gameCount} ${profile.gameCount === 1 ? "game" : "games"} · ${profile.assetCount} files`,
+    }),
+    el("div", { class: "chip-row" }, profile.devices.map((device) => chip(device.name, "chip--device"))),
+  ];
+  if (!profile.empty) {
+    body.push(el("div", { class: "chip-row" },
+      profile.roles.slice(0, 6).map((role) => chip(`${role.role} ${role.count}`, "chip--role"))));
+    body.push(el("p", { class: "profile-note", text: `Artwork set: ${profile.artworkSet}` }));
+  }
+  return el("article", { class: profile.empty ? "profile-card profile-card--empty" : "profile-card" }, [
+    el("button", {
+      type: "button", class: "profile-card__open",
+      onclick: () => openProfile(profile.key),
+      "aria-label": `Open ${profile.platformName} ${profile.name}`,
+    }, body),
+  ]);
+}
+
+// renderProfiles groups profiles under the platform they belong to,
+// because a profile name only means something alongside its platform.
+async function renderProfiles(api) {
+  const host = document.getElementById("profile-platforms");
+  clear(host);
+  if (!coverage) await loadCoverage(api);
+  const summary = document.getElementById("profile-library-summary");
+  const withArt = coverage.profiles.filter((profile) => !profile.empty).length;
+  summary.textContent = `${coverage.profiles.length} profiles across ${new Set(coverage.profiles.map((p) => p.platformId)).size} platforms · ${withArt} currently hold artwork. A profile is stored once and reaches every device that runs its platform.`;
+
+  const byPlatform = new Map();
+  for (const profile of coverage.profiles) {
+    if (!byPlatform.has(profile.platformId)) byPlatform.set(profile.platformId, []);
+    byPlatform.get(profile.platformId).push(profile);
+  }
+  for (const [platformId, profiles] of byPlatform) {
+    const devices = profiles[0]?.devices || [];
+    host.appendChild(el("section", { class: "platform-group" }, [
+      el("header", { class: "platform-group__head" }, [
+        el("h3", { text: profiles[0]?.platformName || platformId }),
+        el("p", { class: "context-line", text: deviceLine(devices) }),
+      ]),
+      el("div", { class: "profile-grid" }, profiles.map((profile) => profileCard(profile))),
+    ]));
+  }
+  renderUnbound(api);
+  renderLiveSurfaces();
+}
+
+// renderUnbound surfaces artwork that exists on disk but that no profile
+// claims. Assigning one is a label change in gamelib's own file; no
+// artwork is copied, moved, or renamed.
+function renderUnbound(api) {
+  const panel = document.getElementById("unbound-artwork");
+  const list = document.getElementById("unbound-list");
+  clear(list);
+  if (!coverage.unbound.length) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  for (const set of coverage.unbound) {
+    const select = el("select", { "aria-label": `Assign ${set.artworkSet} to a profile` }, [
+      el("option", { value: "", text: "Choose a profile…" }),
+      ...coverage.profiles
+        .filter((profile) => profile.empty)
+        .map((profile) => el("option", {
+          value: profile.key,
+          text: `${profile.platformName} · ${profile.name}`,
+        })),
+    ]);
+    list.appendChild(el("article", { class: "unbound-card" }, [
       el("div", {}, [
-        el("h3", { text: profile.name }),
-        el("p", { text: `${games.length} games · ${assets.length} artwork selections` }),
-        profile.theme ? chip(`Theme: ${profile.theme}`) : null,
+        el("h4", { text: set.artworkSet }),
+        el("p", { text: `${set.gameCount} games · ${set.assetCount} files` }),
+      ]),
+      el("div", { class: "unbound-card__actions" }, [
+        select,
+        el("button", {
+          type: "button", class: "button-primary", text: "Assign",
+          onclick: () => assignArtwork(api, set.artworkSet, select.value),
+        }),
       ]),
     ]));
   }
 }
 
-// slugify turns a display name into the path-safe id the profile
-// schema requires, so the user only ever types a device name.
+function renderLiveSurfaces() {
+  const list = document.getElementById("live-surface-list");
+  clear(list);
+  for (const surface of coverage.liveSurfaces) {
+    list.appendChild(el("article", { class: "source-card" }, [
+      el("h3", { text: surface.sourceId }),
+      el("p", { text: `${surface.gameCount} games · ${surface.assetCount} files` }),
+      el("div", { class: "chip-row" }, [chip(surface.rootKind, "chip--live")]),
+    ]));
+  }
+  if (!coverage.liveSurfaces.length) {
+    list.appendChild(el("p", { class: "empty-state", text: "No live frontend folders are configured on this machine." }));
+  }
+}
+
+// assignArtwork records which profile an existing artwork set belongs to.
+// This only edits gamelib's own topology file; the synced catalog and
+// every artwork file are left exactly as they are.
+async function assignArtwork(api, artworkSet, key) {
+  if (!key) {
+    window.announceError("Choose which profile this artwork set belongs to.");
+    return;
+  }
+  try {
+    const doc = await api.get("/api/topology");
+    const target = doc.profiles.find((profile) => `${profile.platform}/${slugify(profile.name)}` === key);
+    if (!target) {
+      window.announceError("That profile no longer exists. Refresh and try again.");
+      return;
+    }
+    target.artwork = artworkSet;
+    await api.put("/api/topology", stripSaved(doc));
+    coverage = null;
+    await renderProfiles(api);
+    window.announceStatus(`"${artworkSet}" is now the artwork for ${target.platform} · ${target.name}. No files were changed.`);
+  } catch (err) {
+    window.announceError(`Could not assign the artwork set: ${err.message}`);
+  }
+}
+
+// stripSaved removes the read-only flag the API adds, which the PUT
+// endpoint rejects as an unknown field.
+function stripSaved(doc) {
+  const { saved, ...rest } = doc;
+  return rest;
+}
+
+function openProfile(key) {
+  const profile = coverage?.profiles.find((item) => item.key === key);
+  if (!profile) return;
+  activeProfile = profile;
+  document.getElementById("profile-detail-heading").textContent = profile.name;
+  document.getElementById("profile-detail-platform").textContent = profile.platformName;
+  const devices = document.getElementById("profile-detail-devices");
+  clear(devices);
+  for (const device of profile.devices) devices.appendChild(chip(device.name, "chip--device"));
+  document.getElementById("profile-detail-summary").textContent = profile.empty
+    ? "This profile has no artwork yet. Assign an artwork set to it from the Profiles view."
+    : `${profile.gameCount} games · ${profile.assetCount} files · artwork set "${profile.artworkSet}"`;
+  document.getElementById("profile-game-search").value = "";
+  renderProfileGames();
+  showView("profile-detail");
+}
+
+// renderProfileGames answers "which games have media in this profile".
+function renderProfileGames() {
+  const list = document.getElementById("profile-game-list");
+  clear(list);
+  if (!activeProfile) return;
+  const term = document.getElementById("profile-game-search").value.trim().toLowerCase();
+  const games = activeProfile.games.filter((game) => !term || game.title.toLowerCase().includes(term));
+  document.getElementById("profile-game-status").textContent = `${games.length} games shown`;
+  if (!games.length) {
+    list.appendChild(el("p", {
+      class: "empty-state",
+      text: activeProfile.empty
+        ? "No artwork is assigned to this profile yet."
+        : "No games in this profile match that search.",
+    }));
+    return;
+  }
+  for (const game of games) {
+    const full = catalog?.games.find((item) => item.id === game.gameId);
+    list.appendChild(el("article", { class: "coverage-card" }, [
+      el("button", {
+        type: "button", class: "coverage-card__open",
+        onclick: () => { if (full) openGame(full); },
+        "aria-label": `Open ${game.title}`,
+      }, [
+        el("h4", { text: game.title }),
+        el("div", { class: "chip-row" }, game.roles.map((role) => chip(role, "chip--role"))),
+        el("p", { class: "context-line", text: `${game.assetCount} ${game.assetCount === 1 ? "file" : "files"}` }),
+      ]),
+    ]));
+  }
+}
+
+async function loadCoverage(api) {
+  coverage = await api.get("/api/coverage");
+  return coverage;
+}
+
+// slugify mirrors the server's profile slug rules so a key built in the
+// browser matches the one the server computed.
 function slugify(name) {
-  return name.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
+  return name.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+async function populatePlatformOptions(api) {
+  const select = document.getElementById("profile-new-platform");
+  clear(select);
+  const doc = await api.get("/api/topology");
+  for (const platform of doc.platforms) {
+    select.appendChild(el("option", { value: platform.id, text: platform.name }));
+  }
 }
 
 async function createProfile(api, announceStatus, announceError) {
   const input = document.getElementById("profile-new-name");
+  const platform = document.getElementById("profile-new-platform").value;
   const name = input.value.trim();
-  const id = slugify(name);
-  if (!id) {
+  if (!slugify(name)) {
     announceError("Give the profile a name that contains letters or numbers.");
     return;
   }
   try {
-    const existing = await api.get(`/api/drafts/profiles/${encodeURIComponent(id)}`);
-    if (existing.exists) {
-      announceError(`A profile named "${name}" already exists.`);
+    const doc = await api.get("/api/topology");
+    const key = `${platform}/${slugify(name)}`;
+    if (doc.profiles.some((profile) => `${profile.platform}/${slugify(profile.name)}` === key)) {
+      announceError(`${platform} already has a profile named "${name}".`);
       return;
     }
-    // Reusing a live profile's id would shadow it in this list and invite
-    // overwriting a device that already works.
-    const live = await api.get("/api/review/profiles");
-    if (live.some((profile) => profile.source === "catalog" && profile.id === id)) {
-      announceError(`"${name}" is already live on a device. Choose a different name.`);
-      return;
-    }
-    await api.put(`/api/drafts/profiles/${encodeURIComponent(id)}`, {
-      baseDigest: "",
-      profile: { version: 1, id, name, games: [] },
-    });
+    doc.profiles.push({ platform, name });
+    await api.put("/api/topology", stripSaved(doc));
     input.value = "";
-    announceStatus(`Created the "${name}" profile. Pick artwork from a game to add it.`);
+    coverage = null;
     await renderProfiles(api);
+    announceStatus(`Added the "${name}" profile for ${platform}.`);
   } catch (err) {
-    announceError(`Could not create the profile: ${err.message}`);
+    announceError(`Could not add the profile: ${err.message}`);
   }
 }
 
@@ -603,10 +763,35 @@ export async function init({ api, announceStatus, announceError }) {
   const onboarding = await setupOnboarding(api, announceStatus, announceError);
   if (!onboarding) await loadCatalog(api, announceError);
   await renderSources(api);
+  try {
+    await populatePlatformOptions(api);
+    await renderProfiles(api);
+  } catch (err) {
+    announceError(`Could not load profile coverage: ${err.message}`);
+  }
   showView("library", false);
 
   document.getElementById("platform-back").addEventListener("click", () => showView("library"));
   document.getElementById("game-back").addEventListener("click", () => openPlatform(activePlatform));
+  document.getElementById("profile-back").addEventListener("click", () => showView("profile-library"));
+  document.getElementById("profile-refresh").addEventListener("click", async () => {
+    coverage = null;
+    try {
+      await renderProfiles(api);
+      announceStatus("Profile coverage refreshed.");
+    } catch (err) {
+      announceError(`Could not refresh coverage: ${err.message}`);
+    }
+  });
+  {
+    // Coalesce keystrokes so filtering a profile's games stays instant.
+    let pending = 0;
+    document.getElementById("profile-game-search").addEventListener("input", () => {
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(renderProfileGames);
+    });
+  }
+  document.getElementById("profile-game-filters").addEventListener("submit", (event) => event.preventDefault());
   for (const id of ["game-search", "game-coverage", "game-role", "game-source", "game-sort"]) {
     const control = document.getElementById(id);
     if (id !== "game-search") {

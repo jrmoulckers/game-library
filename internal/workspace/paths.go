@@ -25,6 +25,10 @@ type Paths struct {
 	// Artifacts is the directory holding create-if-absent immutable JSON
 	// records (for example future plan/gate-review evidence).
 	Artifacts string
+	// Topology is the owner's description of their devices, platforms and
+	// named profiles. It stays here rather than in the synced catalog so
+	// nothing gamelib invents is replicated to the Deck.
+	Topology string
 }
 
 // DefaultRoot returns the platform-local default workspace directory. It
@@ -64,6 +68,7 @@ func NewPaths(root string) Paths {
 		Config:    filepath.Join(root, "config", "active.json"),
 		Drafts:    filepath.Join(root, "drafts"),
 		Artifacts: filepath.Join(root, "artifacts"),
+		Topology:  filepath.Join(root, "config", "topology.json"),
 	}
 }
 

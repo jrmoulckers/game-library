@@ -459,6 +459,243 @@ body {
   border-color: #cfd4dc;
 }
 
+.chip--device {
+  color: #1f3d6b;
+  background: #e6eefb;
+  border-color: #b9cdec;
+}
+
+.chip--role {
+  color: #4a3570;
+  background: #efeafa;
+  border-color: #cdc0e8;
+}
+
+.chip--profile {
+  color: #126444;
+  background: #e1f2eb;
+  border-color: #aad8c5;
+}
+
+.chip--live {
+  color: #6b4a12;
+  background: #f6efe1;
+  border-color: #e0cfa9;
+}
+
+/* Grouping profiles under their platform is what makes a profile name
+   mean something: "Minimalist" is only meaningful as Steam's or retro's. */
+.platform-group {
+  margin-bottom: 2rem;
+}
+
+.platform-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.platform-group__head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.platform-group__head .context-line {
+  margin: 0;
+}
+
+.profile-card__open {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.profile-card__open > * + * {
+  margin-top: 0.5rem;
+}
+
+.profile-card__open h3 {
+  margin: 0;
+}
+
+.profile-card__open p {
+  margin: 0;
+  color: var(--graphite-600);
+}
+
+.profile-card--empty {
+  border-style: dashed;
+  background: #fbfbfc;
+}
+
+.profile-card--empty .profile-card__open h3 {
+  color: var(--graphite-600);
+}
+
+/* Coverage: which profiles hold artwork for one game. */
+.coverage-panel {
+  margin-bottom: 1.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+.coverage-panel h3 {
+  margin: 0 0 0.25rem;
+}
+
+.coverage-list {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coverage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.coverage-row--gap {
+  opacity: 0.72;
+}
+
+.coverage-row__name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 11rem;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.coverage-row__name:hover strong {
+  text-decoration: underline;
+}
+
+.coverage-row__platform {
+  font-size: 0.78rem;
+  color: var(--graphite-600);
+}
+
+.coverage-row__devices {
+  margin-left: auto;
+}
+
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.85rem;
+}
+
+.coverage-card {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+.coverage-card__open {
+  display: block;
+  width: 100%;
+  padding: 0.85rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.coverage-card__open h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.coverage-card__open:hover h4 {
+  text-decoration: underline;
+}
+
+.coverage-card__open .context-line {
+  margin: 0.4rem 0 0;
+}
+
+/* Artwork that exists but that no profile has claimed. */
+.unbound-panel {
+  margin-bottom: 1.75rem;
+  padding: 1rem 1.25rem;
+  background: #fffaf1;
+  border: 1px solid #e8d8b4;
+  border-radius: var(--radius);
+}
+
+.unbound-panel h3 {
+  margin: 0 0 0.25rem;
+}
+
+.unbound-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.unbound-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+.unbound-card h4 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.unbound-card p {
+  margin: 0.2rem 0 0;
+  color: var(--graphite-600);
+  font-size: 0.85rem;
+}
+
+.unbound-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.asset-location {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--graphite-600);
+  overflow-wrap: anywhere;
+}
+
 .missing-panel {
   margin-bottom: 1.75rem;
   padding: 1rem 1.25rem;
