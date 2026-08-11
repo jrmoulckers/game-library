@@ -23,4 +23,4 @@ following from [ADR-0001](../../docs/architecture/decisions/0001-two-tree-topolo
 which keeps the private, personal-device-shaped tree out of the shared repo. It
 is not left as prose: CI fails the build when residue reappears in this
 directory, which is the executable form required by
-[`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.10.0/principles/assurance/testing.md#executable-procedures).
+[`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/assurance/testing.md#executable-procedures).

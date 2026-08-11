@@ -19,13 +19,13 @@ reference for what each integration is allowed to do and where its boundary sits
    [`identity-and-policy.md`](identity-and-policy.md)).
 3. **Every integration is a `source.json`.** Isolating provider behaviour behind a
    thin, single-purpose, declared seam is
-   [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.10.0/principles/platforms/integration-boundaries.md#thin-typed-adapters).
+   [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/platforms/integration-boundaries.md#thin-typed-adapters).
    Repo-specific: `source.schema.json` records an integration's `contract`
    (`openapi` | `rest` | `export-file` | `scrape` | `manual`), `auth_mode`,
    `capabilities`, and `stability`, and no adapter code should assume more than
    its `source.json` declares.
 4. **No secrets in the tree.** Per
-   [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.10.0/principles/assurance/security-and-privacy.md#secret-lifecycle),
+   [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/assurance/security-and-privacy.md#secret-lifecycle),
    `source.schema.json`'s `endpoint_ref` is a sanitized pointer (doc anchor, env
    var name), never a literal URL/IP/hostname/credential.
 

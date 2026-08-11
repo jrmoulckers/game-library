@@ -19,7 +19,7 @@ of these by default.
   `common.defs.schema.json`'s `SymbolicPath`.
 - **Sanitized reports.** Redacting sensitive payloads before evidence leaves the
   producing boundary is
-  [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.10.0/principles/operations/observability.md#redacted-observable-evidence).
+  [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/operations/observability.md#redacted-observable-evidence).
   Repo-specific: `inventory-report.schema.json`'s `privacy` field records whether
   a given inventory document is `private` (root-relative paths, safe for
   local-only use) or `sanitized` (no observations, no relative paths at all —
