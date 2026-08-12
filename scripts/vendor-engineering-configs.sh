@@ -67,16 +67,15 @@ if [ "${MODE}" = "notify" ]; then
   # an unrelated PR, and neither must a rate limit or a DNS failure.
   tmpn="$(mktemp -d)"
   trap 'rm -rf "${tmpn}"' EXIT
-  # Anonymous api.github.com is rate limited per IP, and Actions runners share
-  # addresses, so the unauthenticated call fails often enough that this step
-  # would be blind most of the time. The workflow's own GITHUB_TOKEN is enough to
-  # read tags of a public repository; it is optional so the script still runs
-  # locally without one.
-  auth=()
-  tok="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
-  [ -n "${tok}" ] && auth=(-H "Authorization: Bearer ${tok}")
-  tags="$(curl -sSL "${auth[@]}" "https://api.github.com/repos/${REPO}/tags?per_page=100" 2>/dev/null |
-          grep -o '"name": *"v[0-9][^"]*"' | sed 's/.*"v/v/; s/"$//' || true)"
+  # Tags come from `git ls-remote`, not the REST API. The API caps at 100 per
+  # page and this repository already has 155 tags, so a single unpaginated call
+  # is correct only for as long as GitHub happens to return the highest version
+  # on page one -- an ordering it does not promise. That failure is silent: the
+  # sort is right, the input is truncated, and a stale "newest" reads as
+  # authoritative. ls-remote returns every tag in one request, needs no token,
+  # and is not subject to the API rate limit that made this step blind locally.
+  tags="$(git ls-remote --tags --refs "https://github.com/${REPO}" 2>/dev/null |
+          sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
   if [ -z "${tags}" ]; then
     echo "::notice::could not reach ${REPO} to check for drift; pinned at ${REF}"
     exit 0
