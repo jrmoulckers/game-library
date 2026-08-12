@@ -16,11 +16,24 @@
 set -euo pipefail
 
 REPO="jrmoulckers/engineering"
-REF="${1:-${ENGINEERING_REF:-v0.110.0}}"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# The pinned ref lives in one file, .engineering-ref, and is shared with the
+# ENG-* citations in the documentation. A ref repeated per use site drifts
+# silently: a citation URL carrying a stale tag still returns 200 and still
+# renders, so nothing reports it. Keeping one pin makes moving forward a visible
+# edit to a tracked file, which scripts/check-citations.sh then enforces across
+# every citation in the tree.
+PIN_FILE="${root}/.engineering-ref"
+if [ -z "${ENGINEERING_REF:-}" ] && [ -z "${1:-}" ]; then
+  [ -f "${PIN_FILE}" ] || { echo "fetch-engineering-config: ${PIN_FILE} is missing" >&2; exit 1; }
+  ENGINEERING_REF="$(tr -d ' \t\r\n' < "${PIN_FILE}")"
+  [ -n "${ENGINEERING_REF}" ] || { echo "fetch-engineering-config: ${PIN_FILE} is empty" >&2; exit 1; }
+fi
+REF="${1:-${ENGINEERING_REF}}"
 SRC="configs/golangci.yml"
 URL="https://raw.githubusercontent.com/${REPO}/${REF}/${SRC}"
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dest="${root}/.golangci.yml"
 tmp="$(mktemp)"
 trap 'rm -f "${tmp}"' EXIT

@@ -11,10 +11,12 @@
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
 CONFIG := .golangci.yml
-# The pinned ref is read out of the fetch script rather than repeated here.
-# Two literals would let make advertise one ref while the script fetched
-# another, which is the exact failure this stamp exists to prevent.
-ENGINEERING_REF ?= $(shell bash -c "sed -n 's/.*ENGINEERING_REF:-\([^}]*\)}.*/\1/p' scripts/fetch-engineering-config.sh")
+# The pinned ref is read out of .engineering-ref, the single pin shared with the
+# ENG-* citations in the docs. Two literals would let make advertise one ref
+# while the script fetched another, which is the exact failure this stamp exists
+# to prevent; a ref repeated per citation drifts the same way but silently,
+# because a stale citation URL still returns 200.
+ENGINEERING_REF ?= $(shell bash -c "tr -d ' \t\r\n' < .engineering-ref")
 # The ref is carried in the stamp's *filename*, not its contents. Make compares
 # timestamps and never reads a file, so a stamp recording the ref inside itself
 # is up to date whatever it says, and asking for a different ref would refetch
@@ -41,7 +43,7 @@ all: lint test
 # Three separate conditions must refetch: the pin changed (stamp), the fetch
 # logic changed (script), and the config is missing (the target itself).
 $(CONFIG): scripts/fetch-engineering-config.sh $(CONFIG_STAMP)
-	bash -c 'test -n "$(ENGINEERING_REF)" || { echo "make: could not read the pinned ref from scripts/fetch-engineering-config.sh" >&2; exit 1; }'
+	bash -c 'test -n "$(ENGINEERING_REF)" || { echo "make: could not read the pinned ref from .engineering-ref" >&2; exit 1; }'
 	bash -c 'ENGINEERING_REF=$(ENGINEERING_REF) scripts/fetch-engineering-config.sh'
 
 # Stamps for other refs are cleared so the directory cannot accumulate a

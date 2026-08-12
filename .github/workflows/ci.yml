@@ -12,7 +12,7 @@ permissions:
 # External actions are pinned to immutable commit SHAs rather than mutable tags,
 # per ENG-SEC-002 (verified supply chain); the trailing comment records the
 # human-readable version each SHA corresponded to when it was pinned.
-# https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/assurance/security-and-privacy.md#verified-supply-chain
+# https://github.com/jrmoulckers/engineering/blob/v0.110.0/principles/assurance/security-and-privacy.md#verified-supply-chain
 
 jobs:
   test:
@@ -118,3 +118,15 @@ jobs:
           # defaults and reports success, so a fetch that failed to produce a
           # file would look like a clean run.
           args: --config .golangci.yml ./...
+
+  # A citation is the one reference in this repository that no other job can
+  # check: a stale tag still returns 200 and a fragment cannot 404 at all, so a
+  # citation that has silently stopped meaning what it says is indistinguishable
+  # from a correct one without fetching the document. Separate job, per
+  # ENG-TEST-004.
+  citations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Check ENG-* citations resolve at the pinned ref
+        run: scripts/check-citations.sh --anchors
