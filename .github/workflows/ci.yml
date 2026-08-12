@@ -72,8 +72,6 @@ jobs:
       # costs exactly the release where it mattered.
       - name: Report an engineering release that changes a lint verdict
         continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           revision_of() { sed -n 's|^#[[:space:]]*config-revision:[[:space:]]*\([0-9][0-9]*\).*|\1|p' "$1" | head -1; }
 
@@ -83,25 +81,43 @@ jobs:
             exit 0
           fi
 
-          latest=$(gh api repos/jrmoulckers/engineering/releases/latest --jq .tag_name 2>/dev/null || true)
+          # Tags, not releases. `releases/latest` only sees tags that were
+          # published as releases -- upstream currently has 156 tags and 128
+          # releases, so 28 tags are invisible to it, and a tag cut without a
+          # release makes this notice silently stale rather than wrong-looking.
+          # `git ls-remote` needs no token, is not paginated, and is not subject
+          # to the API rate limit. Filter to semver: the tag list contains at
+          # least one non-version ref (`archive/public-consumption`) which must
+          # never win the sort.
+          latest=$(git ls-remote --tags --refs https://github.com/jrmoulckers/engineering 2>/dev/null |
+            sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
           if [ -z "$latest" ]; then
+            echo "::notice::could not list upstream tags; staleness not checked for $pinned"
             exit 0
           fi
-          # releases/latest orders by tag date, not by version, so a patch
-          # backported to an older line would report as "latest". Only continue
-          # when the reported tag really does sort above the pin, otherwise this
-          # would advise a downgrade.
+          # Sort, never string equality: publication order is not version order,
+          # so a patch backported to an older line must not advise a downgrade.
           if [ "$latest" = "$pinned" ] || [ "$(printf '%s\n%s\n' "$pinned" "$latest" | sort -V | tail -1)" = "$pinned" ]; then
             exit 0
           fi
 
           mine=$(revision_of .golangci.yml)
-          theirs=$(curl -fsSL --max-time 30 \
+          upstream=$(mktemp)
+          # Test curl's own status, not the pipeline's. Piping into the extractor
+          # makes the exit status the extractor's, so an unreachable file and a
+          # file with no marker collapse into one empty result -- two states with
+          # different remedies (retry vs. upstream dropped the marker).
+          if ! curl -fsSL --max-time 30 \
             "https://raw.githubusercontent.com/jrmoulckers/engineering/$latest/configs/golangci.yml" \
-            2>/dev/null | revision_of /dev/stdin) || theirs=""
+            -o "$upstream" 2>/dev/null; then
+            echo "::notice::$latest is newer than the pinned $pinned, but its config could not be fetched; no comparison was made"
+            exit 0
+          fi
+          theirs=$(revision_of "$upstream")
 
           if [ -z "$theirs" ]; then
-            exit 0
+            # Silence here would read as "compared, nothing to report".
+            echo "::notice::$latest is newer than the pinned $pinned, but carries no config-revision marker; the two cannot be compared"
           elif [ -z "$mine" ]; then
             # A copy predating the marker cannot report that the marker is
             # missing from itself, so absence is the signal: this pin is older
