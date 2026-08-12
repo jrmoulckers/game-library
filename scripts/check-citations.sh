@@ -55,6 +55,31 @@ if [ "${total}" -eq 0 ]; then
   exit 1
 fi
 
+# The count guard above only catches the extraction collapsing to nothing. A
+# single citation the pattern cannot parse is worse, because it is skipped in
+# silence: the total quietly drops from 25 to 24, every remaining citation still
+# conforms, and the run passes. Re-pinning rewrites all of these URLs at once,
+# so a malformed rewrite is exactly the plausible way to produce one.
+#
+# So count blob URLs a second time with a deliberately permissive pattern and
+# require the two to agree. The only legitimate difference is the ref-extraction
+# regex in the CI workflow, which contains a literal `\(` and is not a citation.
+#
+# git grep selects the lines but does not do the counting: `git grep -o -E` with
+# a pattern ending at a literal `/` matches nothing here, while the same pattern
+# extended by one character class matches every occurrence. Plain grep agrees
+# with itself.
+mention_lines="$(git grep -h -E "github\.com/${REPO}" -- . || true)"
+loose=$(printf '%s\n' "${mention_lines}" | grep -o -E "https://github\.com/${REPO}/blob/" | wc -l)
+parsed=$(printf '%s\n' "${mention_lines}" | grep -o -E "https://github\.com/${REPO}/blob/[^)\"'[:space:]]+" | grep -vc '\\(' || true)
+excluded=$(printf '%s\n' "${mention_lines}" | grep -o -E "https://github\.com/${REPO}/blob/[^)\"'[:space:]]+" | grep -c '\\(' || true)
+unaccounted=$(( loose - parsed - excluded ))
+if [ "${unaccounted}" -ne 0 ]; then
+  echo "FAIL: ${unaccounted} citation URL(s) are present but unparseable, so they would be skipped without being reported" >&2
+  echo "      ${loose} blob URL(s) found, ${parsed} parsed as citations, ${excluded} deliberately excluded" >&2
+  exit 1
+fi
+
 fail=0
 declare -a targets=()
 
