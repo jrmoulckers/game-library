@@ -125,6 +125,18 @@ if [ "${MODE}" = "check" ]; then
   # everything and approved it, so the count is reported and examining nothing is
   # itself a failure.
   [ -f "${LOCK}" ] || { echo "error: ${LOCK} is missing; run without --check to vendor" >&2; exit 1; }
+  # Distinguish a corrupt lock from a valid one that simply lacks an entry. Both
+  # end in "nothing can be verified", but the remedies differ: a corrupt lock is
+  # restored from version control, a lock missing entries is re-vendored. Naming
+  # the wrong one sends you to rewrite a file you should have recovered. This is
+  # a structural check, not a parse -- the hashes are read with sed, so there is
+  # no parser to fail, and absence of the container is the only signal available.
+  if ! grep -q '"files"[[:space:]]*:' "${LOCK}"; then
+    echo "error: ${LOCK} has no \"files\" object, so it is not a lock this script" >&2
+    echo "       wrote. Restore it from version control rather than re-vendoring;" >&2
+    echo "       re-vendoring would overwrite the evidence of what changed." >&2
+    exit 1
+  fi
   fail=0
   checked=0
   for f in "${FILES[@]}"; do
