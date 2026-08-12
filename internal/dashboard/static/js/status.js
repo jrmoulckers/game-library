@@ -7,8 +7,8 @@ let statusRegion = null;
 let errorRegion = null;
 
 export function initStatus() {
-  statusRegion = document.getElementById("status-region");
-  errorRegion = document.getElementById("error-region");
+  statusRegion = document.getElementById('status-region');
+  errorRegion = document.getElementById('error-region');
 }
 
 export function announceStatus(message) {
@@ -20,5 +20,5 @@ export function announceError(message) {
 }
 
 export function clearError() {
-  if (errorRegion) errorRegion.textContent = "";
+  if (errorRegion) errorRegion.textContent = '';
 }

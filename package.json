@@ -1,0 +1,13 @@
+{
+  "name": "game-library-tooling",
+  "private": true,
+  "description": "Node tooling only. This repository's product is the Go module; nothing here is published or imported by it.",
+  "scripts": {
+    "format:check": "prettier --check \"internal/dashboard/static/js/**/*.js\"",
+    "format:write": "prettier --write \"internal/dashboard/static/js/**/*.js\"",
+    "configs:check": "bash scripts/vendor-engineering-configs.sh --check"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  }
+}

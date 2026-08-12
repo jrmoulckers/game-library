@@ -1,0 +1,17 @@
+# Written before the shared configuration was vendored, and deliberately so.
+#
+# config/engineering/ holds files owned by jrmoulckers/engineering, fetched
+# byte-identical at a pinned ref and hash-locked. A repository-wide format pass
+# that rewrote them would break every hash in engineering-configs.lock.json, and
+# the resulting drift report would name upstream as the source of a change this
+# repository made to itself -- turning a drift signal into a false accusation.
+config/engineering/
+
+node_modules/
+
+# Generated, fetched, or byte-significant fixtures. Reformatting these changes
+# what the Go tests read.
+testdata/
+reports/
+schemas/
+configs/examples/
