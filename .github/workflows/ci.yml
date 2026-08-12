@@ -12,7 +12,7 @@ permissions:
 # External actions are pinned to immutable commit SHAs rather than mutable tags,
 # per ENG-SEC-002 (verified supply chain); the trailing comment records the
 # human-readable version each SHA corresponded to when it was pinned.
-# https://github.com/jrmoulckers/engineering/blob/v0.110.0/principles/assurance/security-and-privacy.md#verified-supply-chain
+# https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/security-and-privacy.md#verified-supply-chain
 
 jobs:
   test:
