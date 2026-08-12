@@ -172,8 +172,13 @@ Engineering rules are cited by `ENG-*` ID and are not restated here. Resolve any
 ID against
 [`principles/index.json`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/index.json).
 The Go-specific technique for satisfying them is
-[practices/go.md](https://github.com/jrmoulckers/engineering/blob/v0.12.0/practices/go.md);
-this repository has no npm surface, so the `@jrmoulckers/*` presets do not apply.
+[practices/go.md](https://github.com/jrmoulckers/engineering/blob/v0.12.0/practices/go.md).
+
+This repository has no npm surface, so the `@jrmoulckers/*` presets are not
+wired up. That is a declined cost, not an absent need: the six hand-authored
+browser modules under `internal/dashboard/static/js/` are served by `//go:embed`
+and no static signal covers them, so a typo'd global reaches a user's browser
+unchallenged. Tracked in issue #10.
 
 The IDs that bear most directly on this repository:
 
