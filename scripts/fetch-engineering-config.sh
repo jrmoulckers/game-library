@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Fetch the Engineering-owned golangci-lint configuration into this working tree.
 #
-# The config is NOT copied into source control: ADR-0003 in jrmoulckers/.github
-# forbids one authority vendoring another's normative content. golangci-lint has
+# The config is NOT copied into source control: `.github ADR-0003` forbids one
+# authority vendoring another's normative content. ADR numbers are repository-local,
+# so a cross-repository citation names the repository and the number together. golangci-lint has
 # no config inheritance (`extends` is rejected by its v2 schema), so the config is
 # materialised at a pinned tag into a gitignored `.golangci.yml` at the repo root.
 # Root placement matters: golangci-lint resolves reported paths relative to the
