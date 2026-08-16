@@ -182,8 +182,12 @@ Compliance obligations establish governance and qualified-review triggers; they
 are not legal advice, and nothing in this repository determines licensing
 validity for a given asset.
 
-Go source, tests, and CI configuration in this repository are owned by their
-respective engineering roles per each area's `AGENTS.md`; this README's
-"Quick start"/"Repository layout" sections are maintained for navigation only —
-architecture and schema content itself lives under `docs/architecture/` and
-`schemas/v1/`.
+This repository is a recorded exclusion from the studio canon sync
+([`.github` ADR-0012](https://github.com/jrmoulckers/.github/blob/main/docs/architecture/0012-recorded-exclusions.md)),
+so it carries no `AGENTS.md` and no synced agent, skill, prompt, or instruction
+files, and its `.gitattributes` is repository-owned rather than canonical.
+Product and Engineering authority is still consumed by reference, as above.
+
+This README's "Quick start"/"Repository layout" sections are maintained for
+navigation only — architecture and schema content itself lives under
+`docs/architecture/` and `schemas/v1/`.
