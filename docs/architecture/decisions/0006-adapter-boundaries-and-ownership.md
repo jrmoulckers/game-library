@@ -70,7 +70,7 @@ makes no host-local change without explicit confirmation.
 
 The boundary is documented in [`docs/architecture/adapters.md`](../adapters.md) and the source
 shape is fixed by [`schemas/v1/source.schema.json`](../../../schemas/v1/source.schema.json)
-([`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/platforms/integration-boundaries.md#thin-typed-adapters)).
+([`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/platforms/integration-boundaries.md#thin-typed-adapters)).
 
 Falsifiable by: any write path into a third-party database, or a detection probe that reaches
 the network.

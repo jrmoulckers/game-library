@@ -32,6 +32,17 @@ expected to be a live, dereferenceable URL.
 
 ## Conventions
 
+These schemas are this repository's published contract, so they are versioned and
+evolve additively until a declared breaking boundary
+([`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts),
+[`ENG-API-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/platforms/api-backend.md#typed-versioned-apis)):
+a breaking change gets a new `schemas/vN/` directory rather than an edit in
+place. `internal/schema` validates both accepted and rejected fixtures against
+the committed files
+([`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#positive-and-negative-polarity)).
+
+Repo-specific conventions:
+
 - **2020-12** (`$schema: https://json-schema.org/draft/2020-12/schema`) throughout.
 - **`additionalProperties: false`** on every object type where the property set is
   known and closed; open-ended metadata is modeled as explicit optional fields

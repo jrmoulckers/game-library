@@ -70,7 +70,7 @@ func ResolveMedia(snapshot Snapshot, id string) (MediaResolution, error) {
 
 	target, err := workspace.Contain(root.Path, observation.RelativePath)
 	if err != nil {
-		return MediaResolution{}, fmt.Errorf("%w: %v", ErrMediaUnsafe, err)
+		return MediaResolution{}, fmt.Errorf("%w: %w", ErrMediaUnsafe, err)
 	}
 
 	info, err := os.Lstat(target)
@@ -78,7 +78,7 @@ func ResolveMedia(snapshot Snapshot, id string) (MediaResolution, error) {
 		if os.IsNotExist(err) {
 			return MediaResolution{}, ErrMediaNotFound
 		}
-		return MediaResolution{}, fmt.Errorf("%w: %v", ErrMediaUnsafe, err)
+		return MediaResolution{}, fmt.Errorf("%w: %w", ErrMediaUnsafe, err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
 		return MediaResolution{}, fmt.Errorf("%w: target is a symlink", ErrMediaUnsafe)
@@ -96,7 +96,7 @@ func ResolveMedia(snapshot Snapshot, id string) (MediaResolution, error) {
 
 	facts, err := media.Inspect(target, root.Kind, observation.RelativePath)
 	if err != nil {
-		return MediaResolution{}, fmt.Errorf("%w: %v", ErrMediaUnsafe, err)
+		return MediaResolution{}, fmt.Errorf("%w: %w", ErrMediaUnsafe, err)
 	}
 
 	return MediaResolution{Path: target, MIME: facts.MIME, Size: info.Size(), SHA256: observation.SHA256}, nil
@@ -110,15 +110,15 @@ func ResolveMedia(snapshot Snapshot, id string) (MediaResolution, error) {
 func requireNoSymlinkAncestor(root, target string) error {
 	realRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrMediaUnsafe, err)
+		return fmt.Errorf("%w: %w", ErrMediaUnsafe, err)
 	}
 	realParent, err := filepath.EvalSymlinks(filepath.Dir(target))
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrMediaUnsafe, err)
+		return fmt.Errorf("%w: %w", ErrMediaUnsafe, err)
 	}
 	rel, err := filepath.Rel(realRoot, realParent)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrMediaUnsafe, err)
+		return fmt.Errorf("%w: %w", ErrMediaUnsafe, err)
 	}
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("%w: a directory between the root and the file has been replaced by a symlink", ErrMediaUnsafe)

@@ -63,7 +63,7 @@ outside the workspace root are rejected, and artifact writes are contained.
 The repository half is checked by CI, which fails the build if a committed report under
 `reports/baseline/` carries absolute host paths or other environment residue — the
 rule is executed, not asserted in prose
-([`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/assurance/testing.md#executable-procedures)).
+([`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#executable-procedures)).
 
 Falsifiable by: committing a report containing a host-specific absolute path, which must
 turn CI red.

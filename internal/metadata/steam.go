@@ -788,11 +788,12 @@ func parseSteamVDFObject(lexer *steamVDFLexer, braced bool, depth int) ([]steamV
 		if lexer.nodes > steamMaxNodes {
 			return nil, errSteamFormat
 		}
-		if valueKind == '{' {
+		switch valueKind {
+		case '{':
 			node.children, err = parseSteamVDFObject(lexer, true, depth+1)
-		} else if valueKind == 's' {
+		case 's':
 			node.value = value
-		} else {
+		default:
 			return nil, errSteamFormat
 		}
 		if err != nil {
@@ -809,8 +810,7 @@ func parseSteamLibraryFolders(data []byte) ([]string, error) {
 		return nil, errSteamFormat
 	}
 	var paths []string
-	var visit func([]steamVDFNode)
-	visit = func(values []steamVDFNode) {
+	visit := func(values []steamVDFNode) {
 		for _, node := range values {
 			if !strings.EqualFold(node.key, "libraryfolders") {
 				continue

@@ -16,3 +16,11 @@ actions are retained outside the repository for explicit migration review.
 
 Regenerating a baseline is read-only with respect to source roots. Do not commit
 the private inventory or exact plan outputs.
+
+Committed artifacts here carry no environment residue — no absolute user paths,
+home directories, or account identifiers. That is a game-library convention
+following from [ADR-0001](../../docs/architecture/decisions/0001-two-tree-topology.md),
+which keeps the private, personal-device-shaped tree out of the shared repo. It
+is not left as prose: CI fails the build when residue reappears in this
+directory, which is the executable form required by
+[`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#executable-procedures).

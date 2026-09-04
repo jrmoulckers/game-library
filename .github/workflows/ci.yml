@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# External actions are pinned to immutable commit SHAs rather than mutable tags,
+# per ENG-SEC-002 (verified supply chain); the trailing comment records the
+# human-readable version each SHA corresponded to when it was pinned.
+# https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/security-and-privacy.md#verified-supply-chain
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -19,8 +24,8 @@ jobs:
           - ubuntu-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
           cache: true
@@ -41,10 +46,111 @@ jobs:
             exit 1
           }
 
+  # ENG-TEST-004 requires each static signal to report independently, so lint is
+  # its own job rather than another step in `test`.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Fetch Engineering golangci-lint configuration
+        run: scripts/fetch-engineering-config.sh
+      # Staleness is reported, never enforced: resolving the newest tag at fetch
+      # time would let a tag pushed in another repository change this repository's
+      # lint rules with no commit here, so the pin stays explicit and this only
+      # makes it loud. A network failure is not a staleness signal, so the probe
+      # cannot fail the job.
+      #
+      # The comparison is on `config-revision`, not on the tag. The upstream
+      # revision is bumped only when a rule's verdict changes, and in 33 tags
+      # that has happened once, so comparing tags means a notice on nearly every
+      # release that could not have altered a single lint result. A signal that
+      # fires when nothing changed is one contributors learn to skip, which
+      # costs exactly the release where it mattered.
+      - name: Report an engineering release that changes a lint verdict
+        continue-on-error: true
+        run: |
+          revision_of() { sed -n 's|^#[[:space:]]*config-revision:[[:space:]]*\([0-9][0-9]*\).*|\1|p' "$1" | head -1; }
+
+          pinned=$(sed -n 's|^# Source: https://github.com/jrmoulckers/engineering/blob/\([^/]*\)/.*|\1|p' .golangci.yml)
+          if [ -z "$pinned" ]; then
+            echo "::warning::could not read the pinned ref from .golangci.yml; staleness not checked"
+            exit 0
+          fi
+
+          # Tags, not releases. `releases/latest` only sees tags that were
+          # published as releases -- upstream currently has 156 tags and 128
+          # releases, so 28 tags are invisible to it, and a tag cut without a
+          # release makes this notice silently stale rather than wrong-looking.
+          # `git ls-remote` needs no token, is not paginated, and is not subject
+          # to the API rate limit. Filter to semver: the tag list contains at
+          # least one non-version ref (`archive/public-consumption`) which must
+          # never win the sort.
+          latest=$(git ls-remote --tags --refs https://github.com/jrmoulckers/engineering 2>/dev/null |
+            sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          if [ -z "$latest" ]; then
+            echo "::notice::could not list upstream tags; staleness not checked for $pinned"
+            exit 0
+          fi
+          # Sort, never string equality: publication order is not version order,
+          # so a patch backported to an older line must not advise a downgrade.
+          if [ "$latest" = "$pinned" ] || [ "$(printf '%s\n%s\n' "$pinned" "$latest" | sort -V | tail -1)" = "$pinned" ]; then
+            exit 0
+          fi
+
+          mine=$(revision_of .golangci.yml)
+          upstream=$(mktemp)
+          # Test curl's own status, not the pipeline's. Piping into the extractor
+          # makes the exit status the extractor's, so an unreachable file and a
+          # file with no marker collapse into one empty result -- two states with
+          # different remedies (retry vs. upstream dropped the marker).
+          if ! curl -fsSL --max-time 30 \
+            "https://raw.githubusercontent.com/jrmoulckers/engineering/$latest/configs/golangci.yml" \
+            -o "$upstream" 2>/dev/null; then
+            echo "::notice::$latest is newer than the pinned $pinned, but its config could not be fetched; no comparison was made"
+            exit 0
+          fi
+          theirs=$(revision_of "$upstream")
+
+          if [ -z "$theirs" ]; then
+            # Silence here would read as "compared, nothing to report".
+            echo "::notice::$latest is newer than the pinned $pinned, but carries no config-revision marker; the two cannot be compared"
+          elif [ -z "$mine" ]; then
+            # A copy predating the marker cannot report that the marker is
+            # missing from itself, so absence is the signal: this pin is older
+            # than revision tracking and its verdicts cannot be compared.
+            echo "::notice::pinned engineering ref $pinned predates config-revision; $latest is revision $theirs, so lint verdicts here cannot be compared"
+          elif [ "$mine" != "$theirs" ]; then
+            echo "::notice::engineering $latest is config-revision $theirs; this repository is pinned to $pinned at revision $mine, which changes at least one lint verdict"
+          fi
+      - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8.0.0
+        with:
+          version: v2.12.2
+          # Name the config explicitly. Without --config, golangci-lint treats a
+          # missing file as "no configuration", silently lints with its built-in
+          # defaults and reports success, so a fetch that failed to produce a
+          # file would look like a clean run.
+          args: --config .golangci.yml ./...
+
+  # A citation is the one reference in this repository that no other job can
+  # check: a stale tag still returns 200 and a fragment cannot 404 at all, so a
+  # citation that has silently stopped meaning what it says is indistinguishable
+  # from a correct one without fetching the document. Separate job, per
+  # ENG-TEST-004.
+  citations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Check ENG-* citations resolve at the pinned ref
+        run: scripts/check-citations.sh --anchors
+
   # Formatting for the six embedded browser ES modules. Separate from `test` so a
   # formatting failure never masks a Go failure, and so the Go job stays runnable
-  # without Node. Actions below are SHA-pinned per engineering ENG-SEC-002; the
-  # pins in `test` above are addressed on the lint-adoption branch.
+  # without Node. Actions are SHA-pinned per engineering ENG-SEC-002, as in every
+  # job above.
   format:
     runs-on: ubuntu-latest
     steps:

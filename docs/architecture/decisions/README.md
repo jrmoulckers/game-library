@@ -1,9 +1,23 @@
 # Architecture Decision Records
 
-This directory holds ADRs for the canonical game-artwork/catalog plan. Each ADR
-follows the standard template (Status / Context / Decision / Consequences) and is
-numbered sequentially. ADRs are immutable once **Accepted**; changes go through a
-new ADR that supersedes the old one.
+This directory holds ADRs for the canonical game-artwork/catalog plan. Recording
+consequential tradeoffs this way, and superseding rather than editing an accepted
+record, follows
+[`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#durable-decisions).
+
+Repository-specific: each ADR uses the standard template (Status / Context /
+Decision / Consequences). Filenames follow the org convention `NNNN-short-title.md`
+([`docs/architecture/README.md`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/docs/architecture/README.md)
+in `jrmoulckers/engineering`), which governs the filename rather than the
+directory. They live in this `decisions/` subdirectory because
+`docs/architecture/` also carries narrative prose (`adapters.md`, `tree.md`,
+`sources.md`, `identity-and-policy.md`, `migration-and-recovery.md`), and keeping
+decisions separate from prose is clearer than interleaving them.
+
+Numbers are permanent: never reused, and never renumbered once published, because
+citations from other repositories depend on a number identifying one record
+forever. Superseding a record leaves its number intact and marks it
+`Status: Superseded`.
 
 | # | Title | Status |
 |---|-------|--------|

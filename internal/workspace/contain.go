@@ -36,7 +36,7 @@ func Contain(base, elem string) (string, error) {
 		case "":
 			return "", fmt.Errorf("path must not contain empty segments")
 		case "..":
-			return "", fmt.Errorf("path must not contain ..")
+			return "", fmt.Errorf("path must not contain a %q element", "..")
 		}
 	}
 	cleanRel := path.Clean(elem)

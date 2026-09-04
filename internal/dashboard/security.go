@@ -113,14 +113,22 @@ func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(struct {
+	if err := json.NewEncoder(w).Encode(struct {
 		Error apiError `json:"error"`
-	}{apiError{Code: code, Message: message}})
+	}{apiError{Code: code, Message: message}}); err != nil {
+		// The status line is already written, so the response cannot be
+		// changed; the client disconnected or the write failed mid-body.
+		return
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		// The status line is already written, so the response cannot be
+		// changed; the client disconnected or the write failed mid-body.
+		return
+	}
 }

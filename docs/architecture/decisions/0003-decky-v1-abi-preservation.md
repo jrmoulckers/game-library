@@ -70,4 +70,4 @@ silently reach the v1 output.
 
 Falsifiable by: a generated v1 profile that fails its own schema, or a canonical-profile change
 that alters v1 output without a schema version bump
-([`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts)).
+([`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts)).

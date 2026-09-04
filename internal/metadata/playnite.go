@@ -75,10 +75,10 @@ const (
 var (
 	errPlayniteUnsupported = errors.New("unsupported Playnite database")
 	errPlayniteCorrupt     = errors.New("corrupt Playnite database")
-	errPlayniteUnstable    = errors.New("Playnite database changed while reading")
+	errPlayniteUnstable    = errors.New("concurrently modified Playnite database")
 	errPlayniteEncrypted   = errors.New("encrypted Playnite database")
-	errPlayniteRecovering  = errors.New("Playnite database is recovering")
-	errPlayniteJournal     = errors.New("Playnite journal tail is present")
+	errPlayniteRecovering  = errors.New("recovering Playnite database")
+	errPlayniteJournal     = errors.New("journal tail present in Playnite database")
 )
 
 // ReadPlaynite reads a Playnite library without taking a lock and without
@@ -163,14 +163,14 @@ func ReadPlaynite(path string) PlayniteResult {
 	return result
 }
 
-func playniteFailure(status, message string, cause error) PlayniteResult {
+// playniteFailure builds a failure result. The cause is deliberately not
+// recorded: Diagnostic is surfaced to the user and carries only sanitized
+// text, so the caller derives status and message from the cause instead.
+func playniteFailure(status, message string, _ error) PlayniteResult {
 	if status == "" {
 		status = playniteStatusUnsupported
 	}
 	d := Diagnostic{Source: "playnite", Status: status, Message: message}
-	if cause == nil {
-		cause = errors.New(message)
-	}
 	return PlayniteResult{Status: status, Message: message, Diagnostic: d, Diagnostics: []Diagnostic{d}}
 }
 
@@ -240,7 +240,7 @@ func (r *playniteReader) readAt(p []byte, offset int64) error {
 		return errPlayniteCorrupt
 	}
 	n, err := r.file.ReadAt(p, offset)
-	if err != nil && !(err == io.EOF && n == len(p)) {
+	if err != nil && (!errors.Is(err, io.EOF) || n != len(p)) {
 		return errPlayniteCorrupt
 	}
 	if n != len(p) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -316,7 +317,7 @@ func twoFileFlags(name string, args []string, inputName string) (string, string,
 }
 
 func usageError() error {
-	return fmt.Errorf("usage: gamelib <inventory|report|duplicates|identity|import|profile|bundle|export|validate|manifest|serve|version> ...")
+	return fmt.Errorf("usage: gamelib <inventory|report|duplicates|identity|import|profile|bundle|export|validate|manifest|serve|version> [args]")
 }
 
 // newServeServer parses `gamelib serve` flags and constructs a bound
@@ -377,7 +378,7 @@ func runServe(args []string) error {
 		}
 		return <-serveErr
 	case err := <-serveErr:
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil

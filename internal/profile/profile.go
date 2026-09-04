@@ -1,3 +1,5 @@
+// Package profile loads canonical profiles, resolves their asset closure, and
+// plans (never applies) bundle revisions and per-adapter export staging.
 package profile
 
 import (

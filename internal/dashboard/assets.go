@@ -38,7 +38,11 @@ func (h *handlers) staticCSS(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		// The response is already committed, so the only remaining option is
+		// to stop; the client disconnected or the write failed mid-body.
+		return
+	}
 }
 
 // staticJS serves one embedded ES module file by its exact base name (the
@@ -57,5 +61,9 @@ func (h *handlers) staticJS(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		// The response is already committed, so the only remaining option is
+		// to stop; the client disconnected or the write failed mid-body.
+		return
+	}
 }

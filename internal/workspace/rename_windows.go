@@ -3,6 +3,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -54,7 +55,8 @@ func atomicRename(oldpath, newpath string) error {
 		uintptr(movefileReplaceExisting|movefileWriteThrough),
 	)
 	if r1 == 0 {
-		if errno, ok := callErr.(syscall.Errno); ok && errno != 0 {
+		var errno syscall.Errno
+		if errors.As(callErr, &errno) && errno != 0 {
 			return fmt.Errorf("rename: %w", errno)
 		}
 		return fmt.Errorf("rename: MoveFileExW failed")

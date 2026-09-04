@@ -12,5 +12,12 @@ coverage.out
 .gamelib/
 *.tmp
 
+# Engineering-owned lint configuration, fetched at a pinned tag by
+# scripts/fetch-engineering-config.sh. Never committed: jrmoulckers/engineering
+# owns this file, and copying it here would fork it (.github ADR-0003).
+/.golangci.yml
+# Stamp recording which ref the config above was fetched at; see Makefile.
+/.golangci.*.ref
+
 # Node tooling (formatting only; see README)
 node_modules/

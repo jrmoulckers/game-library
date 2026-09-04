@@ -101,7 +101,7 @@ handler wiring.
 
 "Thin handlers" is verified structurally: business rules live in `internal/{inventory,identity,
 policy,profile,manifest,media,review}` and are tested there, not through HTTP
-([`ENG-ARCH-001`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/architecture/boundaries-and-contracts.md#minimal-directed-boundaries)).
+([`ENG-ARCH-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#minimal-directed-boundaries)).
 
 Falsifiable by: binding a non-loopback address successfully, or any apply/publish/delete
 endpoint appearing in the HTTP surface.

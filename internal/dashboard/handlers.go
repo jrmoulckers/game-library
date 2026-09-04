@@ -235,7 +235,7 @@ func decodeJSON(r *http.Request, dst any) error {
 		if errors.As(err, &maxBytesErr) {
 			return errBodyTooLarge
 		}
-		return fmt.Errorf("%w: %v", errMalformedJSON, err)
+		return fmt.Errorf("%w: %w", errMalformedJSON, err)
 	}
 	// dec.More() only reports whether another element follows within the
 	// array/object currently being parsed; after a single top-level Decode
@@ -251,7 +251,7 @@ func decodeJSON(r *http.Request, dst any) error {
 		if errors.As(err, &maxBytesErr) {
 			return errBodyTooLarge
 		}
-		return fmt.Errorf("%w: trailing data after JSON value: %v", errMalformedJSON, err)
+		return fmt.Errorf("%w: trailing data after JSON value: %w", errMalformedJSON, err)
 	}
 	return nil
 }

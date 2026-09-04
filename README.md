@@ -148,6 +148,7 @@ reports/baseline/      Sanitized, aggregate-only inventory baselines (see its
                         own README) — never exact paths/hashes/actions
 docs/architecture/     Architecture docs and ADRs (this repo's design record)
 schemas/v1/            JSON Schema 2020-12 contracts for the synced catalog tree
+scripts/               Repo tooling, incl. fetching the Engineering lint config
 ```
 
 ## Authority
@@ -164,6 +165,101 @@ it here; pin to a commit SHA when exact wording matters.
 - Design and interface: [jrmoulckers/studio](https://github.com/jrmoulckers/studio)
 - Governance, automation, and shared agent assets:
   [jrmoulckers/.github](https://github.com/jrmoulckers/.github)
+
+### Engineering practice
+
+Engineering rules are cited by `ENG-*` ID and are not restated here. Resolve any
+ID against
+[`principles/index.json`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/index.json).
+The Go-specific technique for satisfying them is
+[practices/go.md](https://github.com/jrmoulckers/engineering/blob/v0.116.0/practices/go.md).
+
+Every citation resolves at a single ref, recorded once in
+[`.engineering-ref`](.engineering-ref) and shared with the lint configuration, so
+this repository consumes Engineering at one version rather than several. A ref
+repeated at each use site drifts without any signal: a citation carrying a stale
+tag is still a valid URL, returns 200, and renders normally, so neither a link
+checker nor a reviewer can see it. This repository had already drifted to two
+refs before the pin was unified, and not through carelessness -- one cited
+document did not exist at the older tag, so adding that citation silently
+required a second pin. `scripts/check-citations.sh` enforces conformance and,
+with `--anchors`, fetches each document to confirm the `#fragment` still names a
+real heading, which a status code cannot do: GitHub serves `file.md#nonexistent`
+with status 200.
+
+This repository has no npm surface, so the `@jrmoulckers/*` presets are not
+wired up. That is a declined cost, not an absent need: the six hand-authored
+browser modules under `internal/dashboard/static/js/` are served by `//go:embed`
+and no static signal covers them, so a typo'd global reaches a user's browser
+unchallenged. Tracked in issue #10.
+
+The IDs that bear most directly on this repository:
+
+| ID | Where it shows up here |
+| --- | --- |
+| [`ENG-ARCH-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#minimal-directed-boundaries) | `internal/**` is the boundary; `cmd/gamelib` holds only `main` and flag parsing |
+| [`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts) | [`schemas/v1/`](schemas/v1/README.md) is the versioned published contract |
+| [`ENG-ARCH-003`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#durable-decisions) | [`docs/architecture/decisions/`](docs/architecture/decisions/) |
+| [`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/platforms/integration-boundaries.md#thin-typed-adapters) | [`docs/architecture/adapters.md`](docs/architecture/adapters.md) |
+| [`ENG-SEC-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/security-and-privacy.md#secret-lifecycle) | `source.json`'s `endpoint_ref` is a sanitized pointer (doc anchor, env var name), never a literal credential |
+| [`ENG-SEC-002`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/security-and-privacy.md#verified-supply-chain) | CI pins every external action to an immutable commit SHA rather than a mutable tag |
+| [`ENG-OBS-005`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/operations/observability.md#redacted-observable-evidence) | `sanitized` inventory reports, safe to attach to a bug report |
+| [`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#distinct-static-signals) | the independent CI signals below |
+| [`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#positive-and-negative-polarity) | paired accept/reject fixtures in `internal/schema` and the validator tests |
+| [`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#executable-procedures) | the documented no-residue rule is executed by CI, not asserted in prose |
+
+### Verifying a change
+
+Each signal reports independently and blocks the merge
+([`ENG-TEST-004`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#distinct-static-signals)):
+
+```
+test -z "$(gofmt -l .)"   # format
+go vet ./...              # vet
+make lint                 # lint (fetches the config, then runs it)
+go test ./...             # behavior
+go build ./...            # build
+```
+
+The lint configuration is owned by
+[jrmoulckers/engineering](https://github.com/jrmoulckers/engineering/blob/v0.116.0/configs/golangci.yml)
+and is **not** copied into this repository. golangci-lint has no config
+inheritance, so `scripts/fetch-engineering-config.sh` materializes it at a pinned
+tag into a gitignored `.golangci.yml`:
+
+```
+make lint                                    # fetch if needed, then lint
+scripts/fetch-engineering-config.sh main     # or pin any ref by hand
+```
+
+**Use `make lint` rather than a bare `golangci-lint run`.** When no configuration
+file is found, golangci-lint does not complain: it lints with its built-in
+defaults, prints `0 issues` and exits `0`. A contributor who has not run the
+fetch therefore gets a green result from a weaker rule set than CI enforces —
+measured here as 20 spurious errcheck reports and 5 missing linters. The `lint`
+target depends on the config so it cannot be skipped, and passes `--config` so
+that a missing file is a hard error (exit 3) instead of a silent downgrade. CI
+passes `--config` for the same reason.
+
+The engineering repository is public, so this needs no token. The script fails
+loudly on a non-200, an empty body, or a payload that is not a golangci-lint
+config — lint passing against a config that failed to download would be worse
+than a red build.
+
+A pinned fetch carries no built-in staleness signal, so CI reports one. It
+compares the upstream `config-revision` marker rather than the tag: the
+revision is bumped only when a rule's verdict changes, which has happened once
+in 33 releases, so comparing tags would post a notice on nearly every release
+that could not have altered a lint result. The notice is never fatal — an
+offline runner is not a staleness signal — and a pin older than the marker
+itself reports that its verdicts cannot be compared, since absence is the only
+thing such a copy can say about itself.
+
+Fetching at a pinned ref rather than vendoring is now the ratified delivery
+channel for token-free shared configuration, per
+[ADR-0001 (two-channel config delivery)](https://github.com/jrmoulckers/engineering/blob/v0.116.0/docs/architecture/0001-two-channel-config-delivery.md)
+in `jrmoulckers/engineering`. The npm channel described there does not apply
+here: this repository has no npm surface, so it needs no registry access.
 
 The obligations that bear most directly on this repository's contract are the
 Product compliance ones. `PROD-COMP-006` (permit only reviewed software

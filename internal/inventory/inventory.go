@@ -1,3 +1,5 @@
+// Package inventory scans configured roots read-only and produces private or
+// sanitized inventory reports, including duplicate summaries.
 package inventory
 
 import (

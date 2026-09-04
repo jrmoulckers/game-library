@@ -3,7 +3,6 @@ package review
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -103,7 +102,7 @@ func listPlanHistory(paths workspace.Paths) ([]HistoryEntry, error) {
 			return workspace.SanitizeFSError(readErr)
 		}
 		var plan model.Manifest
-		if err := json.Unmarshal(data, &plan); err != nil {
+		if !decodeArtifact(data, &plan) {
 			// Not a plan artifact this package understands; skip rather
 			// than fail the whole listing.
 			return nil
@@ -152,7 +151,7 @@ func listGateHistory(paths workspace.Paths, letter string) ([]HistoryEntry, erro
 		switch letter {
 		case "a":
 			var stored GateAReview
-			if err := json.Unmarshal(data, &stored); err != nil {
+			if !decodeArtifact(data, &stored) {
 				return nil
 			}
 			id, createdAt = stored.ID, stored.CreatedAt
@@ -162,7 +161,7 @@ func listGateHistory(paths workspace.Paths, letter string) ([]HistoryEntry, erro
 			verified = idErr == nil && expected == stored.ID
 		case "b":
 			var stored GateBReview
-			if err := json.Unmarshal(data, &stored); err != nil {
+			if !decodeArtifact(data, &stored) {
 				return nil
 			}
 			id, createdAt = stored.ID, stored.CreatedAt
@@ -172,7 +171,7 @@ func listGateHistory(paths workspace.Paths, letter string) ([]HistoryEntry, erro
 			verified = idErr == nil && expected == stored.ID
 		case "c":
 			var stored GateCReview
-			if err := json.Unmarshal(data, &stored); err != nil {
+			if !decodeArtifact(data, &stored) {
 				return nil
 			}
 			id, createdAt = stored.ID, stored.CreatedAt

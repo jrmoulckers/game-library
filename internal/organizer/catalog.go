@@ -1,3 +1,5 @@
+// Package organizer groups discovered artwork and game files into a catalog,
+// normalizing titles and mapping directory names onto known systems.
 package organizer
 
 import (

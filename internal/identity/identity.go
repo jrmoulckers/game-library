@@ -1,3 +1,5 @@
+// Package identity proposes steam:/playnite:/retro: identity hints for observed
+// inventory files. Proposals are advisory and never applied automatically.
 package identity
 
 import (

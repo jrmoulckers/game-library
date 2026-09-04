@@ -87,7 +87,11 @@ func writeThumb(w http.ResponseWriter, body []byte, mime, etag, hash string) {
 		w.Header().Set("ETag", etag)
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
-	_, _ = w.Write(body)
+	if _, err := w.Write(body); err != nil {
+		// The response is already committed, so the only remaining option is
+		// to stop; the client disconnected or the write failed mid-body.
+		return
+	}
 }
 
 // thumbMaxDimension bounds the longest edge of a generated grid

@@ -296,13 +296,6 @@ func testGUIDBytes(t *testing.T, value string) []byte {
 	return out
 }
 
-func putLiteString(page []byte, position int, value string) int {
-	binary.LittleEndian.PutUint32(page[position:], uint32(len(value)+1))
-	copy(page[position+4:], value)
-	page[position+4+len(value)] = 0
-	return position + 4 + len(value) + 1
-}
-
 func putPageAddress(page []byte, address pageAddress) {
 	binary.LittleEndian.PutUint32(page, address.page)
 	binary.LittleEndian.PutUint16(page[4:], address.slot)

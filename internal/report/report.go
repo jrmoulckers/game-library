@@ -1,3 +1,5 @@
+// Package report reads and writes the JSON documents gamelib exchanges on disk,
+// with deterministic encoding so repeated runs produce identical bytes.
 package report
 
 import (

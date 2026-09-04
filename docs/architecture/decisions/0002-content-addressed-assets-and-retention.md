@@ -54,7 +54,7 @@ which covers digest computation and the retention layers.
 The published shape is fixed by [`schemas/v1/asset.schema.json`](../../../schemas/v1/asset.schema.json)
 and exercised by [`internal/schema/schema_test.go`](../../../internal/schema/schema_test.go),
 which runs paired accept/reject fixtures
-([`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/assurance/testing.md#positive-and-negative-polarity)).
+([`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#positive-and-negative-polarity)).
 
 Falsifiable by: two byte-identical assets that produce different addresses, or a retention
 pass that deletes an asset still referenced by a catalog entry.
