@@ -1,4 +1,45 @@
+# Repository-owned — NOT studio canon.
+#
+# game-library is a recorded exclusion from the jrmoulckers/.github sync fleet
+# (.github ADR-0012), so this file is authored and maintained here. It is never
+# synced, and it must not be replaced by the canonical .gitattributes.
+#
+# `* text=auto` normalizes every text file in the index. The explicit `eol=lf`
+# rules below additionally pin the *working tree*, which `text=auto` alone does
+# not do on Windows. They cover the cases where a CRLF checkout changes
+# behaviour rather than merely producing diff noise:
+#
+#   1. Files compiled into the binary with `//go:embed`. A Windows checkout of
+#      internal/dashboard/static embeds 3,308 more bytes than a Linux checkout
+#      of the same commit, so the two builds are not byte-identical and the
+#      dashboard's served assets depend on the build host.
+#   2. Shell scripts, which fail on Linux with `bad interpreter: ...^M`.
+#   3. Files a byte-exact gate reads: the shared Prettier config sets
+#      endOfLine: 'lf', and the vendored config is hashed in
+#      engineering-configs.lock.json. Without a pin, both gates return a
+#      different verdict on Windows than on Linux for a file nobody edited.
+
 * text=auto
-*.go text eol=lf
+
+# Go sources and module metadata.
+*.go   text eol=lf
 go.mod text eol=lf
 go.sum text eol=lf
+# Dashboard assets embedded via //go:embed — see internal/dashboard/assets.go.
+# *.js is also covered by the Prettier gate below; one rule serves both, so do
+# not re-add it there.
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.tmpl text eol=lf
+
+# Tooling manifests and the vendored Prettier configuration. `prettier --check`
+# compares against endOfLine: 'lf', and the vendored TypeScript declarations are
+# hashed byte-for-byte in engineering-configs.lock.json, so an unpinned CRLF
+# checkout makes a green Linux runner disagree with a red local Windows one.
+*.mjs  text eol=lf
+*.json text eol=lf
+*.ts   text eol=lf
+
+# Executable scripts.
+*.sh   text eol=lf

@@ -18,3 +18,6 @@ coverage.out
 /.golangci.yml
 # Stamp recording which ref the config above was fetched at; see Makefile.
 /.golangci.*.ref
+
+# Node tooling (formatting only; see README)
+node_modules/

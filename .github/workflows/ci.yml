@@ -146,3 +146,30 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Check ENG-* citations resolve at the pinned ref
         run: scripts/check-citations.sh --anchors
+
+  # Formatting for the six embedded browser ES modules. Separate from `test` so a
+  # formatting failure never masks a Go failure, and so the Go job stays runnable
+  # without Node. Actions are SHA-pinned per engineering ENG-SEC-002, as in every
+  # job above.
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      # Ordered deliberately: verify the vendored config still matches its lock
+      # BEFORE formatting. Reversed, a drifted config surfaces as hundreds of
+      # format diffs and reads as a source problem instead of a config problem.
+      - name: Vendored engineering configs match lock
+        run: npm run configs:check
+      - name: Prettier check
+        run: npm run format:check
+      # Advisory only. A tag published upstream must never redden an unrelated PR
+      # (practices/go.md), and a network failure here is not a repo defect.
+      - name: Upstream config drift notice
+        continue-on-error: true
+        run: bash scripts/vendor-engineering-configs.sh --notify-drift

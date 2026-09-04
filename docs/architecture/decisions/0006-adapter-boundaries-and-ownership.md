@@ -1,8 +1,8 @@
 # ADR-0006: Adapter boundaries, staging-first integration, homelab ownership
 
-## Status
-
-Accepted
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
 ## Context
 
@@ -60,3 +60,17 @@ once.
   stable contract, upgrading it is a `source.json` edit plus a new/updated adapter
   — not a schema change, since `source.schema.json` already has room for the full
   stability range.
+
+## Evidence
+
+Adapters are read-only by construction and by test.
+[`internal/source/detect_test.go`](../../../internal/source/detect_test.go) covers detection
+across conventional Windows and Linux locations and asserts it performs no network request and
+makes no host-local change without explicit confirmation.
+
+The boundary is documented in [`docs/architecture/adapters.md`](../adapters.md) and the source
+shape is fixed by [`schemas/v1/source.schema.json`](../../../schemas/v1/source.schema.json)
+([`ENG-INT-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/platforms/integration-boundaries.md#thin-typed-adapters)).
+
+Falsifiable by: any write path into a third-party database, or a detection probe that reaches
+the network.

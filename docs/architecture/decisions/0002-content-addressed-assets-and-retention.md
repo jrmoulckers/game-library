@@ -1,8 +1,8 @@
 # ADR-0002: Content-addressed assets and layered retention policy
 
-## Status
-
-Accepted
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
 ## Context
 
@@ -45,3 +45,16 @@ times they were imported, and that makes tampering or silent substitution obviou
 - Presentation/profile selection is a pure read of existing `AssetRef`s; it is
   schema-incapable of promoting bytes (see `canonical-profile.schema.json`), which
   keeps "what art is shown" and "what art is retained/managed" fully decoupled.
+
+## Evidence
+
+Content addressing is validated by [`internal/media/media_test.go`](../../../internal/media/media_test.go),
+which covers digest computation and the retention layers.
+
+The published shape is fixed by [`schemas/v1/asset.schema.json`](../../../schemas/v1/asset.schema.json)
+and exercised by [`internal/schema/schema_test.go`](../../../internal/schema/schema_test.go),
+which runs paired accept/reject fixtures
+([`ENG-TEST-007`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/assurance/testing.md#positive-and-negative-polarity)).
+
+Falsifiable by: two byte-identical assets that produce different addresses, or a retention
+pass that deletes an asset still referenced by a catalog entry.

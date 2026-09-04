@@ -1,8 +1,10 @@
 # ADR-0007: Local dashboard is a plan-only Go web surface
 
-## Status
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
-Accepted. The dashboard-shape decisions below (the Advanced disclosure, Gate
+The dashboard-shape decisions below (the Advanced disclosure, Gate
 A/B/C, and the review/policy/planning/adapter/recovery surfaces) are superseded
 by [ADR-0008](0008-organizer-only-dashboard.md). Everything else — loopback-only
 binding, request hardening, thin handlers over Go contracts, source detection,
@@ -86,3 +88,20 @@ concurrent writes.
 - The common path now begins with recognizable platforms, games, and artwork;
   implementation-specific review language remains available to expert users
   without defining the product's first impression.
+
+## Evidence
+
+The hardening claims are the testable part, and each has a test:
+[`listen_test.go`](../../../internal/dashboard/listen_test.go) rejects wildcard, hostname, LAN
+and public listeners; [`hardening_test.go`](../../../internal/dashboard/hardening_test.go) and
+[`security_test.go`](../../../internal/dashboard/security_test.go) cover `Host` validation,
+same-origin `Origin`, `Sec-Fetch-Site`, the CSRF nonce, bounded bodies, security headers and
+path/media containment; [`server_test.go`](../../../internal/dashboard/server_test.go) covers
+handler wiring.
+
+"Thin handlers" is verified structurally: business rules live in `internal/{inventory,identity,
+policy,profile,manifest,media,review}` and are tested there, not through HTTP
+([`ENG-ARCH-001`](https://github.com/jrmoulckers/engineering/blob/v0.116.0/principles/architecture/boundaries-and-contracts.md#minimal-directed-boundaries)).
+
+Falsifiable by: binding a non-loopback address successfully, or any apply/publish/delete
+endpoint appearing in the HTTP surface.

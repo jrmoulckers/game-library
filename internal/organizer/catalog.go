@@ -101,6 +101,32 @@ type Asset struct {
 	Location     string   `json:"location"`
 	SharedCopies int      `json:"sharedCopies"`
 	Profiles     []string `json:"profiles,omitempty"`
+	// ArtworkSet names the catalog artwork set this file belongs to, for
+	// assets that live in a synced catalog. It is what ties a file on
+	// disk to a named profile.
+	ArtworkSet string `json:"artworkSet,omitempty"`
+	// RootKind is the kind of source this came from, so a caller can tell
+	// a live frontend directory apart from the canonical catalog.
+	RootKind string `json:"rootKind,omitempty"`
+}
+
+// artworkSetFromPath returns the catalog artwork set a relative path
+// belongs to. Catalog payloads are laid out as artwork/<set>/..., so the
+// set is the second segment and nothing else in the tree qualifies. The
+// empty-profile marker is bookkeeping rather than artwork, so a set that
+// holds only the marker correctly reports as holding nothing.
+func artworkSetFromPath(rootKind, relativePath string) string {
+	if rootKind != "decky-catalog" {
+		return ""
+	}
+	parts := strings.Split(filepath.ToSlash(relativePath), "/")
+	if len(parts) < 3 || parts[0] != "artwork" || parts[1] == "" {
+		return ""
+	}
+	if parts[len(parts)-1] == ".deck-profile-empty" {
+		return ""
+	}
+	return parts[1]
 }
 
 func SystemName(key string) string {
@@ -416,6 +442,8 @@ func buildAsset(observation model.Observation, hashCopies map[string]int, hashPr
 		Location:     observation.RootID + ":" + filepath.ToSlash(observation.RelativePath),
 		SharedCopies: hashCopies[observation.SHA256],
 		Profiles:     sortedSet(hashProfiles[observation.SHA256]),
+		ArtworkSet:   artworkSetFromPath(observation.RootKind, observation.RelativePath),
+		RootKind:     observation.RootKind,
 	}
 }
 
