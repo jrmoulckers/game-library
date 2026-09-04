@@ -1,8 +1,8 @@
 # ADR-0005: Immutable generated bundles with lock manifests and rollback
 
-## Status
-
-Accepted
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
 ## Context
 
@@ -47,3 +47,17 @@ inconsistent directory and no way back to the last good state.
   `library/mods/**`, and `library/assets/**`,
   which is precisely why they are safe to treat as generated/disposable rather than
   as a second source of truth (consistent with ADR-0003's legacy Decky roots).
+
+## Evidence
+
+Lock and pointer shapes are published contracts —
+[`schemas/v1/bundle-lock.schema.json`](../../../schemas/v1/bundle-lock.schema.json) and
+[`schemas/v1/bundle-current.schema.json`](../../../schemas/v1/bundle-current.schema.json) —
+validated by [`internal/schema/schema_test.go`](../../../internal/schema/schema_test.go).
+
+Generation and rollback behaviour is covered by
+[`internal/manifest/manifest_test.go`](../../../internal/manifest/manifest_test.go) and
+[`internal/review/manifestanalysis_test.go`](../../../internal/review/manifestanalysis_test.go).
+
+Falsifiable by: a bundle whose lock does not reproduce it, or a rollback that leaves the
+current pointer referencing a bundle that no longer exists.

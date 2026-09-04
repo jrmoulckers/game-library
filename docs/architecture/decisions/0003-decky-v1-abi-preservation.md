@@ -1,8 +1,8 @@
 # ADR-0003: Preserve the Decky v1 profile ABI as a generated legacy surface
 
-## Status
-
-Accepted
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
 ## Context
 
@@ -59,3 +59,15 @@ without breaking it.
   `library/assets/**`,
   which is what makes it safe to treat as a generated bundle (ADR-0005) rather than
   a second source of truth.
+
+## Evidence
+
+The frozen ABI is a schema, not a convention:
+[`schemas/v1/decky-profile-v1.schema.json`](../../../schemas/v1/decky-profile-v1.schema.json).
+[`internal/decky/decky_test.go`](../../../internal/decky/decky_test.go) generates the legacy
+surface and validates it against that schema, so a field added to the canonical profile cannot
+silently reach the v1 output.
+
+Falsifiable by: a generated v1 profile that fails its own schema, or a canonical-profile change
+that alters v1 output without a schema version bump
+([`ENG-ARCH-002`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/architecture/boundaries-and-contracts.md#explicit-additive-contracts)).

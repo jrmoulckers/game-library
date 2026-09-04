@@ -1,8 +1,8 @@
 # ADR-0004: Identity model and Playnite as adapter-only mapping
 
-## Status
-
-Accepted
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
 ## Context
 
@@ -59,3 +59,16 @@ Canonical identity is:
 - Because Playnite mappings are adapter-only, **Playnite's own database is never
   written by this system** (see ADR-0006) — the relationship is strictly read +
   map, never write-back.
+
+## Evidence
+
+The narrow join condition is tested directly by
+[`internal/media/playnite_identity_test.go`](../../../internal/media/playnite_identity_test.go)
+and [`internal/review/identity_test.go`](../../../internal/review/identity_test.go), including
+the negative cases: a title match alone must not create an identity edge, and a Playnite entry
+without a reviewed Steam plugin ID and numeric `GameId` must not join.
+
+The mapping shape is fixed by
+[`schemas/v1/playnite-mapping.schema.json`](../../../schemas/v1/playnite-mapping.schema.json).
+
+Falsifiable by: any identity edge created from title similarity.
