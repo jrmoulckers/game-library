@@ -14,6 +14,10 @@
 #      of the same commit, so the two builds are not byte-identical and the
 #      dashboard's served assets depend on the build host.
 #   2. Shell scripts, which fail on Linux with `bad interpreter: ...^M`.
+#   3. Files a byte-exact gate reads: the shared Prettier config sets
+#      endOfLine: 'lf', and the vendored config is hashed in
+#      engineering-configs.lock.json. Without a pin, both gates return a
+#      different verdict on Windows than on Linux for a file nobody edited.
 
 * text=auto
 
@@ -21,12 +25,21 @@
 *.go   text eol=lf
 go.mod text eol=lf
 go.sum text eol=lf
-
 # Dashboard assets embedded via //go:embed — see internal/dashboard/assets.go.
+# *.js is also covered by the Prettier gate below; one rule serves both, so do
+# not re-add it there.
 *.js   text eol=lf
 *.css  text eol=lf
 *.html text eol=lf
 *.tmpl text eol=lf
+
+# Tooling manifests and the vendored Prettier configuration. `prettier --check`
+# compares against endOfLine: 'lf', and the vendored TypeScript declarations are
+# hashed byte-for-byte in engineering-configs.lock.json, so an unpinned CRLF
+# checkout makes a green Linux runner disagree with a red local Windows one.
+*.mjs  text eol=lf
+*.json text eol=lf
+*.ts   text eol=lf
 
 # Executable scripts.
 *.sh   text eol=lf

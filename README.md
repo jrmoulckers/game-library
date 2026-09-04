@@ -191,3 +191,49 @@ Product and Engineering authority is still consumed by reference, as above.
 This README's "Quick start"/"Repository layout" sections are maintained for
 navigation only — architecture and schema content itself lives under
 `docs/architecture/` and `schemas/v1/`.
+
+## Front-end formatting
+
+The dashboard ships six browser ES modules under
+`internal/dashboard/static/js/`, embedded into the binary with `//go:embed`.
+They are Go-adjacent but not Go, so `golangci-lint` never sees them. Prettier
+now covers them:
+
+```bash
+npm ci
+npm run format:check    # verify
+npm run format:write    # apply
+```
+
+The shared Prettier configuration comes from `jrmoulckers/engineering` and is
+**vendored**, not installed, into `config/engineering/prettier-config/`.
+`.prettierrc.mjs` re-exports it rather than restating any value, so this
+repository states no formatting rule of its own.
+
+Vendoring is a deliberate exception, not a preference. The packages are
+published to GitHub Packages, which authenticates every read including reads of
+a public package. Measured against the registry:
+
+| credential                     | result |
+| ------------------------------ | ------ |
+| anonymous                      | `401`  |
+| `gh` token without `read:packages` | `403`  |
+
+`401` and `403` are different failures, and only the second means "you need a
+grant". Requiring a classic PAT from every contributor and from CI to check
+formatting is a worse trade than copying four dependency-free files, so
+`scripts/vendor-engineering-configs.sh` fetches them over plain HTTPS at the ref
+in `.engineering-ref` and records their hashes in
+`engineering-configs.lock.json`. `npm run configs:check` verifies the vendored
+tree still matches that lock, and CI runs it *before* the format check so a
+drifted config fails as drift rather than as several hundred formatting diffs.
+
+### What this does not cover
+
+This is formatting only. `@jrmoulckers/eslint-config` is **not** adopted:
+upstream documents that it depends on `@eslint/js`, `typescript-eslint`,
+`eslint-config-prettier`, and `globals` at runtime, so vendoring it would push
+four version choices onto this repository, and installing it needs the registry
+grant above. The correctness rules an ESLint pass would give — undeclared
+globals, unused bindings, unreachable code — remain unenforced on these six
+files. Tracked in [#10](https://github.com/jrmoulckers/game-library/issues/10).

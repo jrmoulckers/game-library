@@ -11,3 +11,6 @@ coverage.out
 # Temporary files
 .gamelib/
 *.tmp
+
+# Node tooling (formatting only; see README)
+node_modules/
