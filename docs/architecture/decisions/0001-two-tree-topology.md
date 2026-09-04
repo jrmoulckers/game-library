@@ -1,8 +1,8 @@
 # ADR-0001: Two-tree topology: repo vs. synced private tree
 
-## Status
-
-Accepted
+- Status: Accepted
+- Date: 2026-08-09
+- Owner: jrmoulckers
 
 ## Context
 
@@ -51,3 +51,19 @@ thing that keeps every device's copy of `GamingProfiles` mutually intelligible.
   relying on one commit history for both.
 - Any schema change that is not backward compatible must ship a migration path for
   the synced tree, since there is no Git history to `git revert` catalog data through.
+
+## Evidence
+
+The split is enforced rather than described. `internal/workspace` asserts it in
+[`paths_test.go`](../../../internal/workspace/paths_test.go),
+[`contain_test.go`](../../../internal/workspace/contain_test.go) and
+[`artifacts_test.go`](../../../internal/workspace/artifacts_test.go): paths resolved
+outside the workspace root are rejected, and artifact writes are contained.
+
+The repository half is checked by CI, which fails the build if a committed report under
+`reports/baseline/` carries absolute host paths or other environment residue — the
+rule is executed, not asserted in prose
+([`ENG-TEST-010`](https://github.com/jrmoulckers/engineering/blob/v0.12.0/principles/assurance/testing.md#executable-procedures)).
+
+Falsifiable by: committing a report containing a host-specific absolute path, which must
+turn CI red.

@@ -1,8 +1,10 @@
 # ADR-0008: The dashboard is an artwork organizer, not a review console
 
-## Status
+- Status: Accepted
+- Date: 2026-08-10
+- Owner: jrmoulckers
 
-Accepted. Supersedes the dashboard-shape portions of
+Supersedes the dashboard-shape portions of
 [ADR-0007](0007-local-dashboard.md).
 
 ## Context
@@ -70,3 +72,19 @@ is a user interface built around demonstrating them.
 - No apply, publish, delete, or prune endpoint is added by this ADR. Publishing a
   profile to a device remains an owned seam and needs its own decision, because
   it writes to live user files.
+
+## Evidence
+
+The organizer read-model is Go-only and tested as such in
+[`internal/organizer/catalog_test.go`](../../../internal/organizer/catalog_test.go).
+[`internal/dashboard/uicontent_test.go`](../../../internal/dashboard/uicontent_test.go) covers
+the rendered surface, and
+[`internal/dashboard/catalog_profiles_test.go`](../../../internal/dashboard/catalog_profiles_test.go)
+the profile views.
+
+The superseded surfaces are retained rather than removed, so the ADR-0007 endpoint tests in
+`internal/dashboard` and `internal/review` continue to pass — that they still pass is the
+evidence this record narrowed the default view without dropping behaviour.
+
+Falsifiable by: an organizer view that computes a business rule the read-model package does not
+own, or a removed Advanced endpoint.
