@@ -14,6 +14,7 @@ this change) that reads, writes, validates, and migrates that tree.
 | [`adapters.md`](adapters.md) | Per-integration contracts (Steam, Playnite, ES-DE, RomM, Epic/EA/Ubisoft) and the plan/staging-first + homelab-ownership boundary. |
 | [`migration-and-recovery.md`](migration-and-recovery.md) | Safety defaults: read-only default, staging/atomic publish, hash-locked manifests, rollback, no auto-purge. |
 | [`sources.md`](sources.md) | Reference table of external source contracts and stability. |
+| [`publishing.md`](publishing.md) | Actual frontend observations, approved local Steam copies, backups and non-deleting rollback. |
 | [`decisions/`](decisions/) | ADRs recording why each of the above is shaped the way it is. |
 
 ## Quick mental model

@@ -36,8 +36,8 @@ type Platform struct {
 }
 
 // Device is a piece of hardware the owner actually uses, and the
-// platforms installed on it. A platform listed here is what makes its
-// profiles reachable from that device.
+// platforms intended to run on it. This declaration makes profiles applicable,
+// but does not observe frontend installation, sync, deployment or parity.
 type Device struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`

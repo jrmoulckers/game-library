@@ -9,8 +9,8 @@
 // Artwork is never matched across platforms. A Steam capsule and a retro
 // screenshot for the same title are separate things in separate profiles,
 // which is what the owner asked for. The only sharing is within a
-// platform: a profile is stored once and reaches every device that runs
-// that platform, so those devices are in parity by construction.
+// platform: a profile is stored once and is intended for devices running
+// that platform. Actual published copies require separate hash observations.
 package coverage
 
 import (
@@ -21,7 +21,7 @@ import (
 	"github.com/jrmoulckers/game-library/internal/topology"
 )
 
-// DeviceRef is a piece of hardware a profile reaches.
+// DeviceRef is hardware a profile is intended for, not deployment evidence.
 type DeviceRef struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -87,9 +87,10 @@ type Game struct {
 // profile claims. Surfacing these is the difference between "you have no
 // profiles" and "you have artwork nobody has named yet".
 type UnboundSet struct {
-	ArtworkSet string `json:"artworkSet"`
-	GameCount  int    `json:"gameCount"`
-	AssetCount int    `json:"assetCount"`
+	ArtworkSet string   `json:"artworkSet"`
+	GameCount  int      `json:"gameCount"`
+	AssetCount int      `json:"assetCount"`
+	Platforms  []string `json:"platforms"`
 }
 
 // Surface is a live frontend directory on this machine, as opposed to the
@@ -207,6 +208,9 @@ func Build(catalog organizer.Catalog, doc topology.Document) Report {
 		}
 		roleTotals := make(map[string]int)
 		for gameID, entry := range contents {
+			if platformOf(titles[gameID].PlatformID) != declared.Platform {
+				continue
+			}
 			roles := make([]string, 0, len(entry.roles))
 			for role := range entry.roles {
 				roles = append(roles, role)
@@ -229,6 +233,7 @@ func Build(catalog organizer.Catalog, doc topology.Document) Report {
 		}
 		sortProfileGames(profile.Games)
 		profile.GameCount = len(profile.Games)
+		profile.Empty = profile.GameCount == 0
 		profile.Roles = sortedRoles(roleTotals)
 		report.Profiles = append(report.Profiles, profile)
 	}
@@ -238,9 +243,15 @@ func Build(catalog organizer.Catalog, doc topology.Document) Report {
 			continue
 		}
 		unbound := UnboundSet{ArtworkSet: set, GameCount: len(contents)}
-		for _, entry := range contents {
+		platforms := map[string]bool{}
+		for gameID, entry := range contents {
 			unbound.AssetCount += entry.assets
+			platforms[platformOf(titles[gameID].PlatformID)] = true
 		}
+		for platform := range platforms {
+			unbound.Platforms = append(unbound.Platforms, platform)
+		}
+		sort.Strings(unbound.Platforms)
 		report.Unbound = append(report.Unbound, unbound)
 	}
 	sort.Slice(report.Unbound, func(i, j int) bool {

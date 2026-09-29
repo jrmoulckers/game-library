@@ -37,19 +37,22 @@ func TestBuildUsesResolvedTitleAndExactAlias(t *testing.T) {
 	builder.AddTitle("playnite:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "Synthetic Library Name", "playnite")
 	builder.AddAlias("playnite:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "steam:123")
 	catalog := BuildWithMetadata(snapshot, nil, builder.Build())
-	if len(catalog.Games) != 1 {
+	if len(catalog.Games) != 2 {
 		t.Fatalf("games = %#v", catalog.Games)
 	}
 
-	game := catalog.Games[0]
-	if game.ID != "steam:123" || game.Title != "Synthetic Resolved Game" || len(game.Assets) != 2 {
-		t.Fatalf("merged game = %+v", game)
+	game, found := FindGame(catalog, "steam:123")
+	if !found || game.Title != "Synthetic Resolved Game" || len(game.Assets) != 1 {
+		t.Fatalf("Steam game = %+v", game)
 	}
 
-	if game.Identities["playnite"] == "" || game.Identities["steam"] != "123" {
+	if game.Identities["playnite"] != "" || game.Identities["steam"] != "123" {
 		t.Fatalf("identities = %#v", game.Identities)
 	}
-
+	playnite, found := FindGame(catalog, "playnite:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+	if !found || playnite.PlatformID != "playnite" || len(playnite.Assets) != 1 || playnite.Title != game.Title {
+		t.Fatalf("exact alias must resolve title but keep artwork separate: %+v", playnite)
+	}
 }
 
 func TestBuildKeepsLossyRetroStemsSeparate(t *testing.T) {
@@ -67,7 +70,7 @@ func TestBuildKeepsLossyRetroStemsSeparate(t *testing.T) {
 	}
 }
 
-func TestAliasedProfileGameUsesCanonicalPlatform(t *testing.T) {
+func TestAliasedProfileGamePreservesPlatform(t *testing.T) {
 	profiles := []model.Profile{{Games: []model.ProfileGame{{
 		ID: "playnite:synthetic", Identities: map[string]string{"playnite": "synthetic"},
 		Assets: map[string]model.AssetSelection{},
@@ -75,20 +78,20 @@ func TestAliasedProfileGameUsesCanonicalPlatform(t *testing.T) {
 	builder := metadata.NewBuilder()
 	builder.AddAlias("playnite:synthetic", "steam:42")
 	catalog := BuildWithMetadata(review.Snapshot{}, profiles, builder.Build())
-	if len(catalog.Games) != 1 || catalog.Games[0].PlatformID != "steam" {
+	if len(catalog.Games) != 1 || catalog.Games[0].PlatformID != "playnite" {
 		t.Fatalf("aliased profile platform = %#v", catalog.Games)
 	}
 
 }
 
-func TestAliasedObservationUsesCanonicalPlatform(t *testing.T) {
+func TestAliasedObservationPreservesPlatform(t *testing.T) {
 	snapshot := review.Snapshot{Inventory: model.Inventory{Observations: []model.Observation{
 		observation("playnite", "playnite-library", "synthetic.png", "playnite:synthetic", "", "cover", "playnite"),
 	}}}
 	builder := metadata.NewBuilder()
 	builder.AddAlias("playnite:synthetic", "steam:42")
 	catalog := BuildWithMetadata(snapshot, nil, builder.Build())
-	if len(catalog.Games) != 1 || catalog.Games[0].ID != "steam:42" || catalog.Games[0].PlatformID != "steam" {
+	if len(catalog.Games) != 1 || catalog.Games[0].ID != "playnite:synthetic" || catalog.Games[0].PlatformID != "playnite" {
 		t.Fatalf("aliased observation platform = %#v", catalog.Games)
 	}
 }

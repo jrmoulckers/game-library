@@ -5,6 +5,12 @@ rules apply to every tool that touches the synced `GamingProfiles` tree, and are
 non-negotiable defaults — a tool must opt *into* anything riskier, never opt out
 of these by default.
 
+**Implemented local exception:** ADR-0009 adds explicitly approved Steam grid
+copies through the dashboard, staging/backups/receipts in the host-local
+workspace, with per-file atomic replacements and non-deleting rollback.
+See [publishing.md](publishing.md) for the exact preview and failure contract.
+The synced catalog migration/bundle-pointer flow below remains plan-only.
+
 ## Defaults
 
 - **Read-only by default.** Any tool that can write to the tree must be run in an
@@ -68,7 +74,9 @@ Each action names an `action` verb (`copy` / `skip` / `quarantine` / `blocked` /
 only** — every `gamelib` subcommand that produces one (`import plan`,
 `bundle plan`, `export plan`) is a planner, and `gamelib manifest verify` reads
 a manifest back to check `expectedDestination`/`sourceSha256` against reality,
-but nothing in the current tooling actually executes (applies) a plan yet.
+but no catalog migration command executes (applies) one. The local Steam
+publisher reconstructs its own bounded adapter plan and requires separate
+approval; it cannot execute an arbitrary uploaded migration manifest.
 Applied-state and rollback-record shapes are intentionally left for a future
 schema once an apply/rollback command exists in the Go tooling — see
 `state/migration/<operation_id>/` in [`tree.md`](tree.md).

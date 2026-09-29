@@ -36,7 +36,7 @@ repository. See
 ### Using the CLI
 
 `gamelib` (module `github.com/jrmoulckers/game-library`, `cmd/gamelib`) is a
-**plan/dry-run-only** tool today — every subcommand reads and reports, or writes
+**plan/dry-run-only** CLI for catalog migrations — inventory/export subcommands read and report, or write
 a plan document for a human/future-tool to review; **none of them applies
 changes to the synced tree**:
 
@@ -52,7 +52,7 @@ gamelib bundle plan                        # plan (never apply) a retained bundl
 gamelib export plan --adapter <adapter>    # steam|decky|playnite|esde|romm staging plan
 gamelib validate profile|decky-v1|decky-catalog|inventory <path>
 gamelib manifest verify                    # verify a plan file's expected SHA-256
-gamelib serve                              # loopback-only artwork organizer dashboard (no apply)
+gamelib serve                              # loopback organizer; opt-in local Steam copies
 gamelib version
 ```
 
@@ -71,8 +71,14 @@ read-only Go contracts the CLI uses — see
 [ADR-0008](docs/architecture/decisions/0008-organizer-only-dashboard.md). It
 binds only to an explicit loopback literal (`127.0.0.1` or `::1`; wildcard,
 hostname, LAN, and public addresses are rejected), and its host-local writes are
-limited to the active configuration and validated profile drafts. There is no
-apply, publish, delete, prune, or rollback endpoint.
+limited by default to local configuration and profile drafts. Profile detail
+also supports hash-based frontend comparisons, local export staging, and
+**explicitly approved local Steam publishing and rollback**. Exact file previews
+are required; replacements are backed up and additions are never deleted.
+Catalog promotion, Playnite database writes, Decky profile generation, remote
+execution, prune, and automatic publishing remain unavailable. See
+[`publishing.md`](docs/architecture/publishing.md) and
+[ADR-0009](docs/architecture/decisions/0009-approved-local-profile-publishing.md).
 
 The dashboard itself is server-rendered Go `html/template` plus small
 progressive-enhancement ES modules (no build step, no framework, no CDN
@@ -98,7 +104,11 @@ Opening `http://<listen-address>/` presents the artwork organizer:
   profile.
 - **Profiles** — visual profile cards, plain-language Decky fallback semantics,
   and profile creation. Choosing artwork from a game's detail view assigns it to
-  a profile here.
+  a profile here. Device badges indicate intended applicability, not deployment.
+  Profile detail compares actual frontend bytes and previews copy-first exports.
+  Unsupported files remain visible and excluded; unobserved/offline targets
+  never receive a matching/parity claim. Target configuration and topology are
+  host-local sidecars, not synced catalog records.
 - **Sources** — conventional Steam, Playnite/ExtraMetadata, GamingProfiles, and
   RetroDECK/ES-DE locations are detected locally on Windows and Linux. The
   owner confirms found folders once; manual root editing and validation remain
@@ -140,7 +150,9 @@ internal/              Go packages implementing the contract: config, model,
                         profile previews), dashboard (loopback HTTP server,
                         html/template shell, thumbnail cache, embedded CSS, and
                         vanilla ES module static assets under
-                        internal/dashboard/static)
+                        internal/dashboard/static), publishing (observed local
+                        frontend targets, hash-locked copy previews, staging,
+                        approved Steam copies, backup and rollback)
 configs/examples/      Example config.json / policy.json documents
 testdata/              Example profile / Decky v1 fixtures used by tests and
                         by this repo's schema validation
@@ -188,7 +200,7 @@ real heading, which a status code cannot do: GitHub serves `file.md#nonexistent`
 with status 200.
 
 This repository has no npm surface, so the `@jrmoulckers/*` presets are not
-wired up. That is a declined cost, not an absent need: the six hand-authored
+wired up. That is a declined cost, not an absent need: the seven hand-authored
 browser modules under `internal/dashboard/static/js/` are served by `//go:embed`
 and no static signal covers them, so a typo'd global reaches a user's browser
 unchallenged. Tracked in issue #10.
@@ -290,7 +302,7 @@ navigation only — architecture and schema content itself lives under
 
 ## Front-end formatting
 
-The dashboard ships six browser ES modules under
+The dashboard ships seven browser ES modules under
 `internal/dashboard/static/js/`, embedded into the binary with `//go:embed`.
 They are Go-adjacent but not Go, so `golangci-lint` never sees them. Prettier
 now covers them:
@@ -331,5 +343,5 @@ upstream documents that it depends on `@eslint/js`, `typescript-eslint`,
 `eslint-config-prettier`, and `globals` at runtime, so vendoring it would push
 four version choices onto this repository, and installing it needs the registry
 grant above. The correctness rules an ESLint pass would give — undeclared
-globals, unused bindings, unreachable code — remain unenforced on these six
+globals, unused bindings, unreachable code — remain unenforced on these seven
 files. Tracked in [#10](https://github.com/jrmoulckers/game-library/issues/10).

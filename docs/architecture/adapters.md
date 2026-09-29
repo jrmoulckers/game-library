@@ -12,8 +12,9 @@ reference for what each integration is allowed to do and where its boundary sits
    implementation this is enforced structurally: `gamelib`'s `import plan`,
    `bundle plan`, and `export plan` subcommands only ever emit a
    `migration-manifest.schema.json`-shaped plan (`model.Manifest`); there is no
-   `apply` subcommand yet, so nothing in this repo's tooling can write to
-   `library/**`/`bundles/**` on its own today.
+   catalog `apply` subcommand. The dashboard's bounded local Steam publisher
+   (ADR-0009) stages under its private workspace, not in the synced tree, and
+   requires a separate exact-target/file approval.
 2. **Promotion follows policy.** Moving staged/observed data into `library/**` is
    subject to the same retention/approval rules as any other data (see
    [`identity-and-policy.md`](identity-and-policy.md)).
@@ -76,17 +77,23 @@ reference for what each integration is allowed to do and where its boundary sits
   `source.json` update (new `contract`/`stability`) plus a new/updated adapter —
   not a schema change (ADR-0006).
 
-## Live-apply boundary: homelab ownership
+## Live-apply boundary: local approval versus remote deployment
+
+ADR-0009 adds a bounded exception for user-approved copies into an explicitly
+configured local Steam grid. It stages and retains backups in the private
+gamelib workspace, not the synced catalog, and does not restart frontends or
+manage infrastructure. Actual targets are separate from intended hardware
+applicability; [publishing.md](publishing.md) defines observation and consent.
 
 Everything above produces or reconciles data inside the synced `GamingProfiles`
 tree (ADR-0001). Getting a generated bundle (ADR-0005) onto a specific device's
 **live, device-local frontend directories**, and any runtime concern that follows
 from that (restarting a frontend, reloading a plugin, choosing which revision a
-given device should be running), is owned by the **homelab environment** —
+given device should be running), is owned by the **homelab environment** for remote automation —
 specifically the **CT601** host and its **Syncthing** configuration — not by this
 repository's tooling.
 
-This repo's responsibility stops at: produce a verified, staged, hash-locked
+For remote deployment, this repo's responsibility stops at: produce a verified, staged, hash-locked
 bundle revision and a correct `current.json` pointer. Whether/when a given device
 adopts that pointer, and how it's actually copied into that device's live paths,
 is homelab-side automation's decision, using the safety rules in

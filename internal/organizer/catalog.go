@@ -175,11 +175,14 @@ func BuildWithMetadata(snapshot review.Snapshot, profiles []model.Profile, title
 	}
 	for _, profile := range profiles {
 		for _, game := range profile.Games {
+			id, _, _, _ := profileGameIdentity(game)
+			namespace := strings.SplitN(id, ":", 2)[0]
 			for _, asset := range game.Assets {
-				if hashProfiles[asset.SHA256] == nil {
-					hashProfiles[asset.SHA256] = make(map[string]struct{})
+				key := namespace + ":" + asset.SHA256
+				if hashProfiles[key] == nil {
+					hashProfiles[key] = make(map[string]struct{})
 				}
-				hashProfiles[asset.SHA256][profile.Name] = struct{}{}
+				hashProfiles[key][profile.Name] = struct{}{}
 			}
 		}
 	}
@@ -190,7 +193,7 @@ func BuildWithMetadata(snapshot review.Snapshot, profiles []model.Profile, title
 	for _, profile := range profiles {
 		for _, profileGame := range profile.Games {
 			id, platformID, platformName, title := profileGameIdentity(profileGame)
-			id = titles.Canonical(id)
+			id = platformIdentity(titles, id)
 			platformID, platformName = platformForIdentity(id, platformID, platformName)
 			if resolved, ok := titles.Title(id); ok {
 				title = resolved.Title
@@ -215,7 +218,7 @@ func BuildWithMetadata(snapshot review.Snapshot, profiles []model.Profile, title
 		if retroCollisions[originalID] {
 			originalID = disambiguatedObservationIdentity(observation)
 		}
-		id := titles.Canonical(originalID)
+		id := platformIdentity(titles, originalID)
 		attention := id == "" || retroCollisions[observation.IdentityHint] || titles.Ambiguous[originalID]
 		if id == "" {
 			id = "unmapped:" + review.ObservationID(observation.RootID, observation.RelativePath)
@@ -332,6 +335,15 @@ func platformForIdentity(identity, fallbackID, fallbackName string) (string, str
 	return fallbackID, fallbackName
 }
 
+// Exact cross-store aliases can resolve titles, never artwork membership.
+func platformIdentity(titles metadata.Catalog, identity string) string {
+	canonical := titles.Canonical(identity)
+	if strings.SplitN(canonical, ":", 2)[0] != strings.SplitN(identity, ":", 2)[0] {
+		return identity
+	}
+	return canonical
+}
+
 func retroCollisionGroups(observations []model.Observation) map[string]bool {
 	stems := make(map[string]map[string]struct{})
 	for _, observation := range observations {
@@ -370,12 +382,12 @@ func fallbackExplanations(game Game) []Fallback {
 	}
 	var definitions []Fallback
 	switch {
-	case game.Identities["steam"] != "":
+	case game.PlatformID == "steam":
 		definitions = append(definitions, Fallback{
 			Frontend: "Steam", Roles: presentRoles(missing, "grid", "portrait", "hero", "logo", "icon"),
 			Message: "Steam uses its built-in artwork for these missing roles.",
 		})
-	case game.Identities["playnite"] != "":
+	case game.PlatformID == "playnite":
 		definitions = append(definitions, Fallback{
 			Frontend: "Playnite", Roles: presentRoles(missing, "cover", "logo", "icon"),
 			Message: "Playnite uses its default placeholder or theme fallback for these roles.",
@@ -406,6 +418,13 @@ func presentRoles(missing map[string]struct{}, roles ...string) []string {
 }
 
 func profileGameIdentity(game model.ProfileGame) (string, string, string, string) {
+	if strings.HasPrefix(game.ID, "steam:") || strings.HasPrefix(game.ID, "playnite:") {
+		platform, name := platformForIdentity(game.ID, "", "")
+		if platform == "steam" {
+			return game.ID, platform, name, "Steam app " + strings.TrimPrefix(game.ID, "steam:")
+		}
+		return game.ID, platform, name, name + " game " + strings.SplitN(game.ID, ":", 2)[1]
+	}
 	if steam := game.Identities["steam"]; steam != "" {
 		return "steam:" + steam, "steam", "Steam", "Steam app " + steam
 	}
@@ -441,7 +460,7 @@ func buildAsset(observation model.Observation, hashCopies map[string]int, hashPr
 		SourceName:   sourceName(observation.RootKind),
 		Location:     observation.RootID + ":" + filepath.ToSlash(observation.RelativePath),
 		SharedCopies: hashCopies[observation.SHA256],
-		Profiles:     sortedSet(hashProfiles[observation.SHA256]),
+		Profiles:     sortedSet(hashProfiles[strings.SplitN(observation.IdentityHint, ":", 2)[0]+":"+observation.SHA256]),
 		ArtworkSet:   artworkSetFromPath(observation.RootKind, observation.RelativePath),
 		RootKind:     observation.RootKind,
 	}
@@ -589,6 +608,10 @@ func gameProfiles(game Game, profiles []model.Profile) []string {
 	seen := make(map[string]struct{})
 	for _, profile := range profiles {
 		for _, profileGame := range profile.Games {
+			_, platformID, _, _ := profileGameIdentity(profileGame)
+			if platformID != game.PlatformID {
+				continue
+			}
 			if profileGame.ID == game.ID {
 				seen[profile.Name] = struct{}{}
 				break

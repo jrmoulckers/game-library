@@ -1,4 +1,5 @@
 import { clear, el, formatBytes } from './dom.js';
+import { initPublishing, openPublishing } from './publishing.js';
 
 let catalog = null;
 let coverage = null;
@@ -490,7 +491,7 @@ async function renderProfiles(api) {
   if (!coverage) await loadCoverage(api);
   const summary = document.getElementById('profile-library-summary');
   const withArt = coverage.profiles.filter((profile) => !profile.empty).length;
-  summary.textContent = `${coverage.profiles.length} profiles across ${new Set(coverage.profiles.map((p) => p.platformId)).size} platforms · ${withArt} currently hold artwork. A profile is stored once and reaches every device that runs its platform.`;
+  summary.textContent = `${coverage.profiles.length} profiles across ${new Set(coverage.profiles.map((p) => p.platformId)).size} platforms · ${withArt} currently hold artwork. Device badges show intended use, not verified publication.`;
 
   const byPlatform = new Map();
   for (const profile of coverage.profiles) {
@@ -533,7 +534,7 @@ function renderUnbound(api) {
     const select = el('select', { 'aria-label': `Assign ${set.artworkSet} to a profile` }, [
       el('option', { value: '', text: 'Choose a profile…' }),
       ...coverage.profiles
-        .filter((profile) => profile.empty)
+        .filter((profile) => profile.empty && set.platforms.includes(profile.platformId))
         .map((profile) =>
           el('option', {
             value: profile.key,
@@ -623,6 +624,15 @@ function openProfile(key) {
   const profile = coverage?.profiles.find((item) => item.key === key);
   if (!profile) return;
   activeProfile = profile;
+  document.getElementById('profile-game-search').value = '';
+  renderProfileDetail();
+  showView('profile-detail');
+  openPublishing(profile.key);
+}
+
+function renderProfileDetail() {
+  const profile = activeProfile;
+  if (!profile) return;
   document.getElementById('profile-detail-heading').textContent = profile.name;
   document.getElementById('profile-detail-platform').textContent = profile.platformName;
   const devices = document.getElementById('profile-detail-devices');
@@ -631,9 +641,7 @@ function openProfile(key) {
   document.getElementById('profile-detail-summary').textContent = profile.empty
     ? 'This profile has no artwork yet. Assign an artwork set to it from the Profiles view.'
     : `${profile.gameCount} games · ${profile.assetCount} files · artwork set "${profile.artworkSet}"`;
-  document.getElementById('profile-game-search').value = '';
   renderProfileGames();
-  showView('profile-detail');
 }
 
 // renderProfileGames answers "which games have media in this profile".
@@ -893,8 +901,20 @@ async function loadCatalog(api, announceError, monitorScan = true) {
     const metadataCompleted =
       lastMetadataStatus === 'loading' && catalog.metadataStatus === 'ready';
     lastMetadataStatus = catalog.metadataStatus || '';
+    coverage = null;
+    tilePlatform = null;
     renderLibrary();
     await renderProfiles(api);
+    if (!document.getElementById('platform-detail').hidden && activePlatform) renderGameGrid();
+    if (!document.getElementById('game-detail').hidden && activeGame) {
+      const updated = catalog.games?.find((game) => game.id === activeGame.id);
+      if (updated) renderGameCoverage(updated);
+    }
+    if (!document.getElementById('profile-detail').hidden && activeProfile) {
+      activeProfile =
+        coverage.profiles.find((profile) => profile.key === activeProfile.key) || activeProfile;
+      renderProfileDetail();
+    }
     if (metadataCompleted) await renderSources(api);
     if (catalog.metadataStatus === 'loading' && !metadataPolling) {
       metadataPolling = true;
@@ -906,7 +926,7 @@ async function loadCatalog(api, announceError, monitorScan = true) {
     if (monitorScan) {
       const status = await api.get('/api/organizer/scan');
       if (status.status === 'scanning') void pollScan(api, announceError);
-      else if (status.status === 'complete' && status.total > 0 && catalog.games.length === 0) {
+      else if (status.status === 'complete' && status.total > 0) {
         await loadCatalog(api, announceError, false);
       }
     }
@@ -941,6 +961,7 @@ async function pollScan(api, announceError) {
           break;
         }
       } else if (status.status === 'complete') {
+        await loadCatalog(api, announceError, false);
         progress.textContent = `Scan complete · ${status.completed} sources checked`;
         break;
       }
@@ -953,7 +974,17 @@ async function pollScan(api, announceError) {
   }
 }
 
+export function initNavigation() {
+  for (const link of document.querySelectorAll('.nav-primary')) {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      showView(link.getAttribute('href').slice(1));
+    });
+  }
+}
+
 export async function init({ api, announceStatus, announceError }) {
+  initPublishing(api);
   window.gamelibAPI = api;
   window.announceStatus = announceStatus;
   window.announceError = announceError;
@@ -966,7 +997,6 @@ export async function init({ api, announceStatus, announceError }) {
   } catch (err) {
     announceError(`Could not load profile coverage: ${err.message}`);
   }
-  showView('library', false);
 
   document.getElementById('platform-back').addEventListener('click', () => showView('library'));
   document
@@ -1034,12 +1064,6 @@ export async function init({ api, announceStatus, announceError }) {
       const opener = dialogOpeners.get(dialog);
       if (opener?.isConnected) opener.focus();
       dialogOpeners.delete(dialog);
-    });
-  }
-  for (const link of document.querySelectorAll('.nav-primary')) {
-    link.addEventListener('click', (event) => {
-      event.preventDefault();
-      showView(link.getAttribute('href').slice(1));
     });
   }
   const advancedLink = document.querySelector('.stage-rail__list a[href="#advanced"]');

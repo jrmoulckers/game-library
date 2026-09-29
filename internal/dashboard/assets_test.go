@@ -57,7 +57,7 @@ func TestEmbeddedAssetsUseLFOnly(t *testing.T) {
 
 	// A silent zero-file walk would make this test pass without examining
 	// anything, which is the failure mode the test exists to prevent.
-	if want := 8; checked != want {
+	if want := 9; checked != want {
 		t.Errorf("checked %d embedded assets, want %d; "+
 			"update this count when assets are added or removed so the walk "+
 			"cannot silently stop covering them", checked, want)

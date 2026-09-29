@@ -29,6 +29,7 @@ forever. Superseding a record leaves its number intact and marks it
 | [0006](0006-adapter-boundaries-and-ownership.md) | Adapter boundaries, staging-first integration, homelab ownership | Accepted |
 | [0007](0007-local-dashboard.md) | Local dashboard is a plan-only Go web surface | Partly superseded by 0008 |
 | [0008](0008-organizer-only-dashboard.md) | The dashboard is an artwork organizer, not a review console | Accepted |
+| [0009](0009-approved-local-profile-publishing.md) | Hash-observed profiles and approved local Steam publishing | Accepted |
 
 See also the narrative docs one level up:
 
