@@ -16,7 +16,7 @@
     </div>
     <p class="app-header__scope">
       <span class="status-dot" aria-hidden="true"></span>
-      Read-only &mdash; no changes are made to your libraries.
+      Read-only by default &mdash; frontend copies require your approval.
     </p>
     <p class="app-header__context" id="workspace-context">Workspace context loads once JavaScript runs; see the first-run setup section for the CLI equivalent.</p>
   </header>
@@ -123,7 +123,7 @@
         <header class="view-heading">
           <div>
             <h2 id="profile-library-heading">Profiles</h2>
-            <p id="profile-library-summary">A profile is one named artwork set for one platform. It is stored once and reaches every device that runs that platform.</p>
+            <p id="profile-library-summary">A profile is one named artwork set for one platform. Device badges show intended use, not verified publication.</p>
           </div>
           <button type="button" id="profile-refresh">Refresh</button>
         </header>
@@ -142,7 +142,7 @@
             <small>Published copies, not the source of truth</small>
           </summary>
           <div class="advanced-content">
-            <p class="context-line">These are the artwork folders your frontends read directly. They are device-local by design and are never synced. A profile is the canonical copy; these are what a profile gets published into.</p>
+            <p class="context-line">These are observed source folders, not proof of publication or sync. Live artwork is not canonical. Verify a profile against an explicitly configured frontend target to compare bytes.</p>
             <div id="live-surface-list" class="source-grid"></div>
           </div>
         </details>
@@ -168,6 +168,27 @@
             <p id="profile-detail-summary"></p>
           </div>
         </header>
+        <section aria-labelledby="profile-publishing-heading" class="profile-publishing">
+          <h3 id="profile-publishing-heading">Artwork on your devices</h3>
+          <p class="context-line">Compare this profile with actual frontend folders. Only hashes verify matching copies; intended device use and Syncthing do not.</p>
+          <button type="button" id="publishing-refresh">Compare now</button>
+          <p id="publishing-status" role="status" aria-live="polite"></p>
+          <div id="publishing-targets"></div>
+          <div id="publishing-preview" hidden></div>
+          <details class="advanced-area">
+            <summary>Frontend folders on this host</summary>
+            <p class="context-line">Configure only an actual device-local Steam grid folder or a mounted target you have verified. This does not connect to remote devices. Saving changes local labels only, not artwork. Leave unavailable device paths empty; do not guess a retro frontend.</p>
+            <form id="publishing-target-config">
+              <div id="publishing-target-fields"></div>
+              <button type="submit">Save frontend folders</button>
+            </form>
+          </details>
+          <details class="advanced-area">
+            <summary>Published copies and recovery</summary>
+            <p class="context-line">Copies are atomic one file at a time. Replacements keep backups; an interrupted operation may be partial. Rollback restores replacements without deleting added files.</p>
+            <div id="publishing-history"></div>
+          </details>
+        </section>
         <form id="profile-game-filters" class="organizer-toolbar">
           <label for="profile-game-search">Find a game</label>
           <input id="profile-game-search" type="search" placeholder="Search titles in this profile">

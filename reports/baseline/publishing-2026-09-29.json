@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-29",
+  "privacy": "sanitized",
+  "readOnly": true,
+  "catalog": {
+    "boundProfilesCompared": 1,
+    "games": 127,
+    "files": 429,
+    "exportableFiles": 413,
+    "blockedFiles": 16,
+    "blockedContentExtensionMismatches": 12,
+    "blockedLayoutMetadataFiles": 2,
+    "blockedAmbiguousRoleVariantFiles": 2
+  },
+  "localSteamComparison": {
+    "matching": 427,
+    "missing": 0,
+    "different": 2,
+    "unknown": 0,
+    "exportableMatching": 411,
+    "exportableMissing": 0,
+    "exportableDifferent": 2,
+    "exportableUnknown": 0
+  },
+  "unobservedSteamDeviceTargets": 2,
+  "remoteFrontendObservations": 0,
+  "liveCopies": 0,
+  "liveDeletes": 0,
+  "stagedRealLibraryExports": 0
+}

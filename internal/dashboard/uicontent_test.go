@@ -172,7 +172,7 @@ func TestStaticJSRejectsUnknownName(t *testing.T) {
 // changing them.
 var requiredCopyBoundaries = []string{
 	"Read-only",
-	"no changes are made to your libraries",
+	"frontend copies require your approval",
 	"canonical",
 	"homelab",
 }

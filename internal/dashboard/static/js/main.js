@@ -29,6 +29,7 @@ function initStageRail() {
 async function main() {
   initStatus();
   initStageRail();
+  organizer.initNavigation();
 
   try {
     const boot = await api.get('/api/bootstrap');

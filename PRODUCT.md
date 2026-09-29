@@ -36,7 +36,8 @@ The dashboard runs from the `gamelib` binary on the user's machine, reads
 host-local symbolic-root configuration and private inventory data, and works
 with the separate private GamingProfiles tree. It produces validated local
 profile drafts. Homelab deployment, Syncthing, CT601, Cartridge, and
-device-local frontend publication remain outside this repository.
+remote deployment remain outside this repository. Explicit local Steam copies
+are now supported through an exact preview and approval, per ADR-0009.
 
 ## Capabilities and Constraints
 
@@ -45,10 +46,11 @@ device-local frontend publication remain outside this repository.
 - Reuse the existing Go inventory, identity, policy, profile, manifest, media,
   Decky, report, and schema behavior rather than reproducing business rules in
   browser code.
-- Atomically write only host-local configuration and explicit local profile
-  drafts.
+- Atomically write host-local configuration, profile drafts and export/recovery
+  state. Local Steam publishing is opt-in, hash-locked and copy-first, with
+  backups before replacements and non-deleting rollback.
 - Keep canonical catalog, bundle, generated Decky, Playnite database, live
-  frontend, and homelab mutation unavailable.
+  frontend mutation without approval, and homelab mutation unavailable.
 - Preserve Windows and Linux behavior, symbolic/root-relative paths,
   case-collision handling, Unicode safety, deterministic output, and Decky v1
   compatibility including `deck-default`, `steam-default`, `artwork: null`, and
@@ -73,8 +75,9 @@ device-local frontend publication remain outside this repository.
 The repository contains accepted architecture decisions, JSON Schemas, Go
 domain packages, synthetic fixtures, cross-platform tests, and sanitized
 aggregate reports. It contains no real artwork, private inventory, personal
-paths, credentials, account identifiers, or live apply implementation; future
-work must not fabricate or commit them.
+paths, credentials, or account identifiers. Publishing is verified against
+temporary fixtures; opt-in real-library comparisons are read-only and report
+counts, never private paths or identities.
 
 ## Product Principles
 

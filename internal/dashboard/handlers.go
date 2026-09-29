@@ -13,6 +13,7 @@ import (
 	"github.com/jrmoulckers/game-library/internal/manifest"
 	"github.com/jrmoulckers/game-library/internal/model"
 	"github.com/jrmoulckers/game-library/internal/profile"
+	"github.com/jrmoulckers/game-library/internal/publishing"
 	"github.com/jrmoulckers/game-library/internal/workspace"
 )
 
@@ -24,6 +25,7 @@ type handlers struct {
 	metadata  *metadataCache
 	thumbs    *thumbnailCache
 	stateMu   sync.RWMutex
+	publisher *publishing.Engine
 }
 
 func (h *handlers) mux() *http.ServeMux {
@@ -49,6 +51,15 @@ func (h *handlers) mux() *http.ServeMux {
 	mux.HandleFunc("GET /api/topology", h.getTopology)
 	mux.HandleFunc("PUT /api/topology", h.putTopology)
 	mux.HandleFunc("GET /api/coverage", h.coverageReport)
+	mux.HandleFunc("GET /api/publishing/targets", h.getPublishingTargets)
+	mux.HandleFunc("PUT /api/publishing/targets", h.putPublishingTargets)
+	mux.HandleFunc("GET /api/publishing/parity", h.publishingParity)
+	mux.HandleFunc("POST /api/publishing/preview", h.publishingPreview)
+	mux.HandleFunc("POST /api/publishing/stage", h.publishingStage)
+	mux.HandleFunc("POST /api/publishing/publish", h.publishingPublish)
+	mux.HandleFunc("GET /api/publishing/history", h.publishingHistory)
+	mux.HandleFunc("POST /api/publishing/rollback-preview", h.publishingRollbackPreview)
+	mux.HandleFunc("POST /api/publishing/rollback", h.publishingRollback)
 	mux.HandleFunc("POST /api/config/validate-roots", h.validateSetupRoots)
 	return mux
 }

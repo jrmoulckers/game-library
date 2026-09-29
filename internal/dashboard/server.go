@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jrmoulckers/game-library/internal/publishing"
 	"github.com/jrmoulckers/game-library/internal/workspace"
 )
 
@@ -77,6 +78,7 @@ func NewHandler(allowedHost string, opts Options) (handler http.Handler, csrfTok
 	h := &handlers{
 		opts: opts.withDefaults(), csrfToken: token,
 		snapshots: &snapshotCache{}, scans: &scanManager{}, metadata: &metadataCache{}, thumbs: newThumbnailCache(),
+		publisher: &publishing.Engine{Paths: opts.Workspace},
 	}
 	chain := &securityChain{allowedHost: allowedHost, csrfToken: token, next: h.mux()}
 	return chain, token, nil

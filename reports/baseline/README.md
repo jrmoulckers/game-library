@@ -13,6 +13,13 @@ actions are retained outside the repository for explicit migration review.
   are not changed or quarantined automatically.
 - `topology-2026-08-08.json` preserves aggregate results from the preceding
   read-only desktop, Steam Deck, CT replica, Playnite, and RetroDECK inventory.
+- `publishing-2026-09-29.json` records the opt-in read-only publishing acceptance:
+  127 games / 429 files compared, 413 eligible copies (411 matching and two
+  different) against the local Steam target, and 16 explicitly blocked files (12 content/extension mismatches,
+  two layout JSON files, two ambiguous icon variants). All 429 observed files
+  compare as 427 matching and two different. Other Steam devices remain
+  unobserved; no remote frontend was established and no real artwork was
+  staged, published, renamed, converted, or deleted.
 
 Regenerating a baseline is read-only with respect to source roots. Do not commit
 the private inventory or exact plan outputs.
